@@ -1,0 +1,225 @@
+.pos-chrome {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 100vh;
+  background: var(--market-core-background-primary-color, #fff);
+  /* Force primary body copy and “muted” semantic text to black within this shell */
+  --market-core-text-10-color: #000000;
+  --market-core-text-20-color: #000000;
+  --market-core-text-30-color: #000000;
+  --market-core-text-10-light-mode-color: #000000;
+  --market-core-text-20-light-mode-color: #000000;
+  --market-core-text-30-light-mode-color: #000000;
+}
+
+.pos-chrome__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.pos-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: min(320px, 38vw);
+  min-width: 260px;
+  max-width: 360px;
+  padding: 8px 16px;
+  border-right: 1px solid var(--market-core-border-divider-color, rgba(0, 0, 0, 0.08));
+  min-height: 0;
+  background: var(--market-core-background-primary-color, #fff);
+}
+
+.pos-sidebar__header {
+  flex-shrink: 0;
+  padding: 20px 0px 8px;
+}
+
+.pos-sidebar__page-header {
+  margin-bottom: 24px;
+}
+
+/*
+ * MarketCard always sets verticalAlignment to "top", which top-aligns the row.
+ * Restore default row vertical centering for the location picker card.
+ */
+.pos-location-card[data-market-card] button ~ div[class*='_row_'] {
+  align-items: center !important;
+}
+
+.pos-location-card[data-market-card] button ~ div[class*='_row_'] [class*='trailingAccessory'] {
+  align-items: center !important;
+}
+
+.pos-location-card[data-market-card]
+  button
+  ~ div[class*='_row_']
+  [class*='primaryTextContent'],
+.pos-location-card[data-market-card]
+  button
+  ~ div[class*='_row_']
+  [class*='sideTextContent'] {
+  justify-content: center !important;
+}
+
+.pos-sidebar__scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pos-sidebar__scroll-inner {
+  padding: 0 0px 16px 0px;
+}
+
+.pos-nav-section-row {
+  margin: 16px 0 8px;
+}
+
+.pos-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+  background: var(--market-core-fill-20-color, #f2f2f2);
+}
+
+.pos-main-placeholder {
+  max-width: 720px;
+  min-height: 200px;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--market-core-background-primary-color, #fff);
+  border: 1px solid var(--market-core-border-divider-color, rgba(0, 0, 0, 0.08));
+}
+
+.pos-tab-bar {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--market-core-border-divider-color, rgba(0, 0, 0, 0.1));
+  background: var(--market-core-background-primary-color, #fff);
+}
+
+.pos-tab-bar__inner {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 0 12px;
+}
+
+/* Match sidebar width so logout lines up under the left column */
+.pos-tab-bar__logout {
+  flex: 0 0 min(320px, 38vw);
+  min-width: 260px;
+  max-width: 360px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  padding-left: 16px;
+  padding-right: 8px;
+  border-right: 1px solid var(--market-core-border-divider-color, rgba(0, 0, 0, 0.08));
+}
+
+.pos-tab-bar__logout .pos-tab--logout {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.pos-tab-bar__tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 12px 0 8px;
+  box-sizing: border-box;
+}
+
+.pos-tab-bar__tabs .pos-tab {
+  flex: 1 1 0;
+}
+
+.pos-tab {
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: #000000;
+  border-radius: 8px;
+}
+
+.pos-tab:focus {
+  outline: none;
+}
+
+.pos-tab:focus-visible {
+  outline: 2px solid var(--market-color-focus-ring-color, #2d68ff);
+  outline-offset: 2px;
+}
+
+.pos-tab--selected {
+  background-color: var(--market-core-fill-40-color, rgba(0, 0, 0, 0.06));
+  border-radius: 8px;
+}
+
+.pos-tab__inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 100%;
+  padding: 4px 8px;
+  box-sizing: border-box;
+}
+
+.pos-tab__icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-tab__badge {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  color: var(--market-core-background-primary-color, #fff);
+  background: var(--market-color-accent-primary-fill-color, #2d68ff);
+  box-sizing: border-box;
+}
+
+.pos-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--market-core-fill-40-color, #e8e8ea);
+}
+
+.pos-nav-item--selected {
+  border-radius: 8px;
+  background-color: var(--market-core-fill-40-color, rgba(0, 0, 0, 0.06));
+}
