@@ -1,17 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { MarketFooter, MarketInput, MarketRow } from '@squareup/market-react';
+import { MarketFooter, MarketInput } from '@squareup/market-react';
 import {
-  MarketBluetoothIcon,
   MarketBulletListIcon,
-  MarketChainLinksIcon,
   MarketChevronRightIcon,
   MarketChevronUpIcon,
   MarketClipboardIcon,
   MarketDualRotatingArrowsIcon,
   MarketHamburgerLinesIcon,
-  MarketSpeakerIcon,
-  MarketSquareBuyerDisplayIcon,
-  MarketSquareRegisterDisplayIcon,
   MarketTagIcon,
   MarketServiceBellIcon,
 } from '@squareup/market-react/icons';
@@ -44,7 +39,7 @@ type PosSettingsChromeProps = {
   children: ReactNode;
 };
 
-const HARDWARE_ITEMS: { id: HardwareNavId; title: string; icon: ReactNode }[] = [
+const HARDWARE_ITEMS: { id: HardwareNavId; title: string }[] = [
   { id: 'network', title: 'Network' },
   { id: 'bluetooth', title: 'Bluetooth' },
   { id: 'general', title: 'General' },
@@ -58,30 +53,6 @@ const HARDWARE_ITEMS: { id: HardwareNavId; title: string; icon: ReactNode }[] = 
   { id: 'printers', title: 'Printers' },
   { id: 'local-connectivity', title: 'Local Connectivity' },
 ];
-
-function NavSectionRow({ label }: { label: string }) {
-  return (
-    <MarketRow
-      className="pos-nav-section-row"
-      size="small"
-      title={
-        <MarketText
-          component="span"
-          typeStyle="medium-30"
-          textColor="text-10"
-          withMargin={false}
-          style={{
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            fontSize: 11,
-          }}
-        >
-          {label}
-        </MarketText>
-      }
-    />
-  );
-}
 
 function PosLogoutTab() {
   return (
@@ -184,17 +155,6 @@ export function PosSettingsChrome({ children }: PosSettingsChromeProps) {
                 placeholder="Search"
                 size="medium"
               />
-              <div style={{ marginTop: 24 }}>
-                <MarketCard
-                  className="pos-location-card"
-                  mode="transient"
-                  title="Restaurant"
-                  secondaryText="Active on 3 devices"
-                  leadingAccessory={<MarketServiceBellIcon size="medium" aria-hidden />}
-                  trailingAccessory={<MarketChevronRightIcon size="small" aria-hidden />}
-                  onClick={() => undefined}
-                />
-              </div>
             </div>
 
             <MarketScrollArea
@@ -203,8 +163,25 @@ export function PosSettingsChrome({ children }: PosSettingsChromeProps) {
               showScrollIndicators
             >
               <div className="pos-sidebar__scroll-inner">
+                <div className="pos-sidebar__location">
+                  <MarketCard
+                    className="pos-location-card"
+                    mode="transient"
+                    title="Restaurant"
+                    secondaryText="Active on 3 devices"
+                    leadingAccessory={<MarketServiceBellIcon size="medium" aria-hidden />}
+                    trailingAccessory={<MarketChevronRightIcon size="small" aria-hidden />}
+                    onClick={() => undefined}
+                  />
+                </div>
                 <MarketList showDividers={false}>
-                  <MarketList.Item title="Checkout" mode="transient" onClick={() => undefined} />                  <MarketList.Item title="Hardware" mode="transient" onClick={() => undefined} trailingAccessory={<MarketChevronUpIcon size="small" aria-hidden />}/>
+                  <MarketList.Item title="Checkout" mode="transient" onClick={() => undefined} />
+                  <MarketList.Item
+                    title="Hardware"
+                    mode="transient"
+                    onClick={() => undefined}
+                    trailingAccessory={<MarketChevronUpIcon size="small" aria-hidden />}
+                  />
                 </MarketList>
                 <MarketList showDividers={false}>
                   {HARDWARE_ITEMS.map((item) => (

@@ -73,8 +73,9 @@
   padding: 0 0px 16px 0px;
 }
 
-.pos-nav-section-row {
-  margin: 16px 0 8px;
+.pos-sidebar__location {
+  margin-top: 24px;
+  margin-bottom: 8px;
 }
 
 .pos-main {
