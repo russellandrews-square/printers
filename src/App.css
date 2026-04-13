@@ -7,3 +7,12 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/*
+ * Market tokens define --market-core-type-font-family on [data-market-theme], but many
+ * trial components (e.g. MarketEmptyState primary text) use font-family: inherit, so we
+ * need a real font stack on the themed root or copy falls back to the UA serif.
+ */
+[data-market-theme] {
+  font-family: var(--market-core-type-font-family);
+}

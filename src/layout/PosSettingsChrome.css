@@ -84,16 +84,7 @@
   min-height: 0;
   overflow: auto;
   padding: 24px;
-  background: var(--market-core-fill-20-color, #f2f2f2);
-}
-
-.pos-main-placeholder {
-  max-width: 720px;
-  min-height: 200px;
-  padding: 24px;
-  border-radius: 12px;
-  background: var(--market-core-background-primary-color, #fff);
-  border: 1px solid var(--market-core-border-divider-color, rgba(0, 0, 0, 0.08));
+  background: var(--market-core-surface-10-color, #fff);
 }
 
 .pos-tab-bar {

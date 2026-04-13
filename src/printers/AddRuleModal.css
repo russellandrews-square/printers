@@ -1,0 +1,44 @@
+.add-rule-modal__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-rule-modal__section {
+  margin-top: 8px;
+}
+
+.add-rule-modal__section-title {
+  margin-bottom: 16px;
+}
+
+.add-rule-modal__empty-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.add-rule-modal__empty-actions .add-rule-modal__add-content-dropdown {
+  margin-top: 0;
+}
+
+.add-rule-modal__content-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-rule-modal__content-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.add-rule-modal__add-content-dropdown {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.add-rule-modal__add-content-dropdown-trigger {
+  width: 100%;
+}

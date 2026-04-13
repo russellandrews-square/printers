@@ -1,0 +1,143 @@
+.entire-cat-picker__search {
+  margin-bottom: 16px;
+}
+
+.entire-cat-picker__auto-include-card {
+  margin-bottom: 16px;
+}
+
+.entire-cat-picker__toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.entire-cat-picker__sheet-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Same horizontal “outset” pattern as MarketRow interactive rows: padding sits outside the
+   content width so labels stay aligned with modal text; width + negative margins absorb it. */
+.entire-cat-picker__plain-row {
+  --entire-cat-picker-row-h-outset: var(
+    --market-row-normal-variant-background-horizontal-outset-padding,
+    8px
+  );
+  --entire-cat-picker-row-bg-radius: var(--market-row-background-radius, 6px);
+
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  width: calc(100% + (2 * var(--entire-cat-picker-row-h-outset)));
+  margin-left: calc(-1 * var(--entire-cat-picker-row-h-outset));
+  margin-right: calc(-1 * var(--entire-cat-picker-row-h-outset));
+  padding-left: var(--entire-cat-picker-row-h-outset);
+  padding-right: var(--entire-cat-picker-row-h-outset);
+  position: relative;
+  height: 56px;
+  min-height: 56px;
+  border-radius: var(--entire-cat-picker-row-bg-radius);
+  box-sizing: border-box;
+  transition: background-color 0.12s ease;
+}
+
+/* Straight horizontal rule between rows (MarketRow `hasDivider` + interactive inset), not border-bottom on a rounded box */
+.entire-cat-picker__plain-row::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--market-row-normal-variant-separator-height, 1px) / -2);
+  left: var(--entire-cat-picker-row-h-outset);
+  right: var(--entire-cat-picker-row-h-outset);
+  display: block;
+  height: var(--market-row-normal-variant-separator-height, 1px);
+  background-color: var(
+    --market-row-normal-variant-normal-state-separator-color,
+    var(--core-divider-20-color, #f0f0f0)
+  );
+  pointer-events: none;
+}
+
+.entire-cat-picker__plain-row:first-child::before {
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .entire-cat-picker__plain-row:hover::before,
+  .entire-cat-picker__plain-row:hover + .entire-cat-picker__plain-row::before {
+    opacity: 0;
+  }
+}
+
+.entire-cat-picker__plain-row:hover {
+  background-color: var(--row-normal-variant-hover-state-background-color, rgba(0, 0, 0, 0.04));
+}
+
+.entire-cat-picker__plain-row:active {
+  background-color: var(--row-normal-variant-pressed-state-background-color, rgba(0, 0, 0, 0.06));
+}
+
+.entire-cat-picker__plain-row__checkbox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.entire-cat-picker__plain-row__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  border-radius: 0;
+}
+
+.entire-cat-picker__plain-row__main:focus-visible {
+  outline: var(--core-focus-ring-border-size, 2px) solid var(--core-focus-ring-color, #006aff);
+  outline-offset: calc(-1 * var(--core-focus-ring-buffer-size, 2px));
+  border-radius: var(--market-row-background-radius, 6px);
+  z-index: 1;
+}
+
+.entire-cat-picker__plain-row__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.entire-cat-picker__plain-row__trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.entire-cat-picker__plain-row__side {
+  text-align: right;
+}
+
+.entire-cat-picker__plain-row__chevron {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--row-normal-variant-normal-state-drill-color, rgba(0, 0, 0, 0.45));
+}
+
+.entire-cat-picker__plain-row:hover .entire-cat-picker__plain-row__chevron {
+  color: var(--row-hover-state-drill-color, rgba(0, 0, 0, 0.45));
+}
+
+.entire-cat-picker__checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+}

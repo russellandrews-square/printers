@@ -1,0 +1,27 @@
+.printers-settings-main__tabs {
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.printers-settings-main__section {
+  margin-bottom: 32px;
+}
+
+.printers-settings-main__section-heading {
+  margin-bottom: 16px;
+}
+
+.printers-settings-main__empty {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.printers-settings-main__rules-row {
+  cursor: pointer;
+}
+
+.printers-settings-main__rules-row:focus-visible {
+  outline: 2px solid var(--market-core-focus-ring-color, currentColor);
+  outline-offset: -2px;
+}

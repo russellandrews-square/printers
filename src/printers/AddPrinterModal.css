@@ -1,0 +1,79 @@
+.add-printer-modal__hero {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 24px;
+}
+
+.add-printer-modal__hero-visual {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 220px;
+  border-radius: var(--market-core-radius-100, 6px);
+  background: var(--market-core-fill-40-color, rgba(0, 0, 0, 0.06));
+  object-fit: contain;
+}
+
+.add-printer-modal__section {
+  padding: 20px 0;
+}
+
+.add-printer-modal__section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.add-printer-modal__section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.add-printer-modal__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-printer-modal__kv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  align-items: baseline;
+}
+
+.add-printer-modal__kv-label {
+  color: var(--market-core-text-30-color, rgba(0, 0, 0, 0.55));
+}
+
+.add-printer-modal__rule-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.add-printer-modal__rule-grip {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--market-core-text-30-color, rgba(0, 0, 0, 0.45));
+}
+
+.add-printer-modal__rule-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-printer-modal__rule-actions {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.add-printer-modal__muted {
+  margin-top: 4px;
+}
+
+.add-printer-modal__add-link {
+  margin-top: 8px;
+}
