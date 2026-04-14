@@ -12,6 +12,7 @@ export type Printer = {
   imageUrl?: string;
 };
 
+/** Discriminator: ticket print rules (`kitchen_ticket`) vs receipt print rules (`customer_receipt`). */
 export type PrintingRuleType = 'kitchen_ticket' | 'customer_receipt';
 
 /** One category’s item inclusion when using “Entire categories” content */

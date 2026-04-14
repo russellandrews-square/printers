@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { MarketButton, MarketDivider, MarketInput, MarketLink, MarketPill } from '@squareup/market-react';
+import { MarketButton, MarketDivider, MarketField } from '@squareup/market-react';
 import {
   MarketButtonGroup,
   MarketCard,
@@ -9,18 +9,20 @@ import {
   MarketGrid,
   MarketModal,
   MarketSelect,
+  MarketTable,
   MarketText,
 } from '@squareup/market-react/trial';
 import { MarketEllipsisHorizontalIcon, MarketTrashcanIcon } from '@squareup/market-react/icons';
 import type { Printer, PrintingRule } from './types';
-import { kitchenTicketRuleSummary } from './printingRuleSummary';
-import { DEFAULT_SQUARE_ACCESSORY_PRINTER } from './squareAccessoryPrinterCatalog';
+import { printRuleCardSummary } from './printingRuleSummary';
+import type { SquareAccessoryPrinterCatalogEntry } from './squareAccessoryPrinterCatalog';
 import { useViewTransitionVisibility } from './useViewTransitionVisibility';
 import './AddPrinterModal.css';
 
 export type AddPrinterModalProps = {
   open: boolean;
   onClose: () => void;
+  catalogEntry: SquareAccessoryPrinterCatalogEntry;
   onSave: (printer: Omit<Printer, 'id'>) => void;
   /** Group labels already used by saved printers (combobox starts empty when this is empty). */
   existingGroupNames?: string[];
@@ -28,6 +30,10 @@ export type AddPrinterModalProps = {
   onCreateKitchenRule: () => void;
   onEditKitchenRule: (ruleId: string) => void;
   onDeleteKitchenRule: (ruleId: string) => void;
+  customerReceiptRules: PrintingRule[];
+  onCreateCustomerReceiptRule: () => void;
+  onEditCustomerReceiptRule: (ruleId: string) => void;
+  onDeleteCustomerReceiptRule: (ruleId: string) => void;
 };
 
 const PAPER_OPTIONS = [
@@ -50,18 +56,24 @@ function groupOptionLabel(o: GroupOption): string {
 export function AddPrinterModal({
   open,
   onClose,
+  catalogEntry,
   onSave,
   existingGroupNames = [],
   kitchenTicketRules,
   onCreateKitchenRule,
   onEditKitchenRule,
   onDeleteKitchenRule,
+  customerReceiptRules,
+  onCreateCustomerReceiptRule,
+  onEditCustomerReceiptRule,
+  onDeleteCustomerReceiptRule,
 }: AddPrinterModalProps) {
   const [name, setName] = useState('');
   const [paper, setPaper] = useState<string>('62');
   const [sessionGroupNames, setSessionGroupNames] = useState<string[]>([]);
   const [groupInputValue, setGroupInputValue] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<GroupOption | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -75,6 +87,7 @@ export function AddPrinterModal({
     setPaper('62');
     setGroupInputValue('');
     setSelectedGroup(null);
+    setNameError(null);
   }, [open]);
 
   useLayoutEffect(() => {
@@ -87,7 +100,7 @@ export function AddPrinterModal({
     return () => cancelAnimationFrame(id);
   }, [open, modalShown]);
 
-  const catalog = DEFAULT_SQUARE_ACCESSORY_PRINTER;
+  const catalog = catalogEntry;
   const allGroupNames = useMemo(
     () => [...new Set([...existingGroupNames, ...sessionGroupNames])].sort((a, b) => a.localeCompare(b)),
     [existingGroupNames, sessionGroupNames],
@@ -112,7 +125,7 @@ export function AddPrinterModal({
     return null;
   }
 
-  const nameTitle = name.trim() !== '' ? name.trim() : 'Printer';
+  const nameTitle = name.trim() !== '' ? name.trim() : 'New printer';
 
   const handleGroupChange = (value: GroupOption | null) => {
     if (!value) {
@@ -132,8 +145,11 @@ export function AddPrinterModal({
   const handleSave = () => {
     const trimmed = name.trim();
     if (!trimmed) {
+      setNameError('Name is required');
+      nameInputRef.current?.focus();
       return;
     }
+    setNameError(null);
     const groupTitle = selectedGroup?.kind === 'group' ? selectedGroup.name : undefined;
     onSave({
       name: trimmed,
@@ -156,12 +172,7 @@ export function AddPrinterModal({
         }
         trailingActions={
           <MarketButtonGroup layout="side" maxVisibleItems={4}>
-            <MarketButton
-              type="button"
-              rank="primary"
-              onClick={handleSave}
-              disabled={!name.trim()}
-            >
+            <MarketButton type="button" rank="primary" onClick={handleSave}>
               Save
             </MarketButton>
             <MarketButton type="button" rank="secondary" onClick={() => undefined}>
@@ -193,20 +204,27 @@ export function AddPrinterModal({
             textColor="text-10"
             withMargin={true}
           >
-            Details
+            Printer details
           </MarketText>
           <div className="add-printer-modal__fields">
-            <MarketInput
+            <MarketField
               ref={nameInputRef}
               label="Name"
-              placeholder="Name"
+              placeholder="Name (like Expo Printer, Kitchen Printer, Host Printer, etc.)"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              invalid={nameError != null}
+              errorMessage={nameError ?? undefined}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError != null) {
+                  setNameError(null);
+                }
+              }}
             />
             <MarketCombobox<GroupOption>
               multiple={false}
               label="Group"
-              placeholder="Search or create a group like Bar, Kitchen, etc."
+              placeholder="Search or create a group like Bar Printers, Kitchen Printers, etc."
               presentationMode={MarketComboboxPresentationMode.ON_INPUT}
               inputValue={groupInputValue}
               onInputChange={setGroupInputValue}
@@ -229,42 +247,30 @@ export function AddPrinterModal({
               ))}
             </MarketSelect>
           </div>
-        </section>
 
-        <MarketDivider />
+          <MarketTable className="add-printer-modal__details-table">
+            <MarketTable.Row>
+              <MarketTable.Cell component="th">Type</MarketTable.Cell>
+              <MarketTable.Cell>Receipt printer</MarketTable.Cell>
+            </MarketTable.Row>
+            <MarketTable.Row>
+              <MarketTable.Cell component="th">Model</MarketTable.Cell>
+              <MarketTable.Cell>mC-Print3</MarketTable.Cell>
+            </MarketTable.Row>
+            <MarketTable.Row>
+              <MarketTable.Cell component="th">Connection</MarketTable.Cell>
+              <MarketTable.Cell>USB</MarketTable.Cell>
+            </MarketTable.Row>
+            <MarketTable.Row>
+              <MarketTable.Cell component="th">Printer type</MarketTable.Cell>
+              <MarketTable.Cell>80mm, thermal</MarketTable.Cell>
+            </MarketTable.Row>
+            <MarketTable.Row>
+              <MarketTable.Cell component="th">Serial number</MarketTable.Cell>
+              <MarketTable.Cell>2581425101400486</MarketTable.Cell>
+            </MarketTable.Row>
+          </MarketTable>
 
-        <section className="add-printer-modal__section">
-          <div className="add-printer-modal__section-title-row">
-            <MarketText
-              component="h2"
-              typeStyle="heading-20"
-              textColor="text-10"
-              withMargin={true}
-            >
-              Connection
-            </MarketText>
-            <MarketPill label="Connected" size="small" status="success" />
-          </div>
-          <div className="add-printer-modal__kv">
-            <MarketText component="span" typeStyle="paragraph-20" withMargin={false}>
-              Connection type
-            </MarketText>
-            <MarketText component="span" typeStyle="paragraph-20" withMargin={false}>
-              Wi-Fi
-            </MarketText>
-            <MarketText
-              component="span"
-              typeStyle="paragraph-20"
-              textColor="text-30"
-              withMargin={false}
-              className="add-printer-modal__kv-label"
-            >
-              IP address
-            </MarketText>
-            <MarketText component="span" typeStyle="paragraph-20" withMargin={false}>
-              198.886.0.172
-            </MarketText>
-          </div>
         </section>
 
         <MarketDivider />
@@ -276,23 +282,22 @@ export function AddPrinterModal({
             textColor="text-10"
             withMargin={true}
           >
-            Kitchen ticket rules
+            Ticket print rules
           </MarketText>
           {kitchenTicketRules.length === 0 ? (
-            <div className="add-printer-modal__kitchen-empty">
+            <div className="add-printer-modal__rules-empty">
               <MarketEmptyState
-                borderless
-                primaryText="No kitchen ticket rules yet"
-                secondaryText="Create a rule to choose which orders print on this printer."
+                primaryText="No ticket print rules yet"
+                secondaryText="Create a rule to choose which orders print tickets on this printer."
                 actions={
                   <MarketButton rank="primary" type="button" onClick={onCreateKitchenRule}>
-                    Create kitchen ticket rule
+                    Create ticket print rule
                   </MarketButton>
                 }
               />
             </div>
           ) : (
-            <div className="add-printer-modal__kitchen-rules-grid">
+            <div className="add-printer-modal__rules-grid">
               <MarketGrid
                 columns={{ narrow: 1, medium: 1, wide: 1, extraWide: 1 }}
                 gap={300}
@@ -302,11 +307,11 @@ export function AddPrinterModal({
                     <MarketCard
                       mode="transient"
                       title={rule.name}
-                      secondaryText={kitchenTicketRuleSummary(rule)}
+                      secondaryText={printRuleCardSummary(rule)}
                       onClick={() => onEditKitchenRule(rule.id)}
                       trailingAccessory={
                         <div
-                          className="add-printer-modal__kitchen-rule-card-trailing"
+                          className="add-printer-modal__rule-card-trailing"
                           onClick={(ev) => ev.stopPropagation()}
                           onMouseDown={(ev) => ev.stopPropagation()}
                         >
@@ -341,21 +346,59 @@ export function AddPrinterModal({
             textColor="text-10"
             withMargin={true}
           >
-            Customer receipt rules
+            Receipt print rules
           </MarketText>
-          <MarketText
-            component="p"
-            typeStyle="paragraph-20"
-            textColor="text-30"
-            withMargin={false}
-          >
-            No customer receipt rules yet.
-          </MarketText>
-          <div className="add-printer-modal__add-link">
-            <MarketLink type="button" standalone onClick={() => undefined}>
-              + Add customer receipt rule
-            </MarketLink>
-          </div>
+          {customerReceiptRules.length === 0 ? (
+            <div className="add-printer-modal__rules-empty">
+              <MarketEmptyState
+                primaryText="No receipt print rules yet"
+                secondaryText="Create a rule to choose when receipts print on this printer."
+                actions={
+                  <MarketButton rank="primary" type="button" onClick={onCreateCustomerReceiptRule}>
+                    Create receipt print rule
+                  </MarketButton>
+                }
+              />
+            </div>
+          ) : (
+            <div className="add-printer-modal__rules-grid">
+              <MarketGrid
+                columns={{ narrow: 1, medium: 1, wide: 1, extraWide: 1 }}
+                gap={300}
+              >
+                {customerReceiptRules.map((rule) => (
+                  <MarketGrid.Item key={rule.id}>
+                    <MarketCard
+                      mode="transient"
+                      title={rule.name}
+                      secondaryText={printRuleCardSummary(rule)}
+                      onClick={() => onEditCustomerReceiptRule(rule.id)}
+                      trailingAccessory={
+                        <div
+                          className="add-printer-modal__rule-card-trailing"
+                          onClick={(ev) => ev.stopPropagation()}
+                          onMouseDown={(ev) => ev.stopPropagation()}
+                        >
+                          <MarketButton
+                            type="button"
+                            rank="tertiary"
+                            destructive
+                            aria-label={`Delete rule ${rule.name}`}
+                            icon={<MarketTrashcanIcon aria-hidden />}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onDeleteCustomerReceiptRule(rule.id);
+                            }}
+                          />
+                        </div>
+                      }
+                    />
+                  </MarketGrid.Item>
+                ))}
+              </MarketGrid>
+            </div>
+          )}
         </section>
       </MarketModal.Content>
     </MarketModal>

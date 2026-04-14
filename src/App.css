@@ -16,3 +16,19 @@ body {
 [data-market-theme] {
   font-family: var(--market-core-type-font-family);
 }
+
+/*
+ * Core light tokens omit --market-core-critical-*-light-mode-color, but Field tokens
+ * reference them for invalid borders and error text, so invalid fields lose their stroke.
+ * Map to core reds. Field also maps invalid+focus/hover borders to emphasis; keep error red.
+ */
+[data-market-theme*='light-mode'] {
+  --market-core-critical-fill-light-mode-color: var(--market-core-red-fill-light-mode-color);
+  --market-core-critical-text-light-mode-color: var(--market-core-red-text-light-mode-color);
+  --market-field-focus-state-invalid-validity-light-mode-border-color: var(
+    --market-core-critical-fill-light-mode-color
+  );
+  --market-field-hover-state-invalid-validity-light-mode-border-color: var(
+    --market-core-critical-fill-light-mode-color
+  );
+}

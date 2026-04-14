@@ -1,3 +1,7 @@
+.add-rule-modal__rule-kind {
+  margin-bottom: 20px;
+}
+
 .add-rule-modal__fields {
   display: flex;
   flex-direction: column;

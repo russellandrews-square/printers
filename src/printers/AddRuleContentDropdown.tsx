@@ -1,7 +1,6 @@
 import { MarketButton } from '@squareup/market-react';
 import { MarketDropdown, MarketList } from '@squareup/market-react/trial';
-import type { AddRuleContentOptionId } from './AddRuleContentModal';
-import { ADD_RULE_CONTENT_OPTIONS } from './AddRuleContentModal';
+import { ADD_RULE_CONTENT_OPTIONS, type AddRuleContentOptionId } from './addRuleContentOptions';
 
 export type AddRuleContentDropdownProps = {
   className?: string;
@@ -16,7 +15,7 @@ export function AddRuleContentDropdown({
 }: AddRuleContentDropdownProps) {
   return (
     <div className={className}>
-      <MarketDropdown placement="bottom-start">
+      <MarketDropdown placement="bottom">
         <MarketDropdown.Trigger>
           <MarketButton type="button" rank="secondary" className={triggerClassName}>
             Add content

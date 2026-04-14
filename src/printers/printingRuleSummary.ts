@@ -59,8 +59,8 @@ function contentSummary(rule: PrintingRule): string {
     .join(' · ');
 }
 
-/** One-line summary of fulfillments, sources, and category content for rule cards. */
-export function kitchenTicketRuleSummary(rule: PrintingRule): string {
+/** One-line summary of fulfillments, sources, and category content for ticket/receipt rule cards. */
+export function printRuleCardSummary(rule: PrintingRule): string {
   return [
     `Fulfillments: ${fulfillmentSummary(rule)}`,
     `Sources: ${sourceSummary(rule)}`,

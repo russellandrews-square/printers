@@ -10,6 +10,7 @@ export type SquareAccessoryPrinterCatalogEntry = {
 };
 
 const STAR_TSP143IV_MODEL = 'Star Micronics STAR TSP143IV UE receipt printer';
+const STAR_SP742ME_MODEL = 'Star Micronics SP742ME Ethernet printer';
 
 export const SQUARE_ACCESSORY_PRINTER_CATALOG: SquareAccessoryPrinterCatalogEntry[] = [
   {
@@ -18,7 +19,16 @@ export const SQUARE_ACCESSORY_PRINTER_CATALOG: SquareAccessoryPrinterCatalogEntr
     modelId: STAR_TSP143IV_MODEL,
     imageUrl: '/printers/printer-hero.png',
   },
+  {
+    id: 'star-sp742me-ethernet',
+    catalogName: STAR_SP742ME_MODEL,
+    modelId: STAR_SP742ME_MODEL,
+    imageUrl: '/printers/printer-hero2.png',
+  },
 ];
+
+/** Simulated devices found on USB in the add-printer flow (kept in sync with catalog). */
+export const USB_DISCOVERED_PRINTERS = SQUARE_ACCESSORY_PRINTER_CATALOG;
 
 export const DEFAULT_SQUARE_ACCESSORY_PRINTER = SQUARE_ACCESSORY_PRINTER_CATALOG[0]!;
 

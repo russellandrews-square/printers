@@ -10,19 +10,24 @@ import {
   MarketText,
 } from '@squareup/market-react/trial';
 import { AddPrinterModal } from './AddPrinterModal';
+import { AddPrinterUsbPickerModal } from './AddPrinterUsbPickerModal';
 import { AddRuleModal } from './AddRuleModal';
+import type { SquareAccessoryPrinterCatalogEntry } from './squareAccessoryPrinterCatalog';
+import { DEFAULT_SQUARE_ACCESSORY_PRINTER } from './squareAccessoryPrinterCatalog';
 import type { Printer, PrintingRule } from './types';
 import './PrintersSettingsMain.css';
 
 const TAB_PRINTERS = 'printers';
 const TAB_RULES = 'rules';
 
+type AddPrinterPhase = 'idle' | 'usb_pick' | 'configure';
+
 function ruleTypeLabel(ruleType: PrintingRule['ruleType']): string {
   switch (ruleType) {
     case 'kitchen_ticket':
-      return 'Kitchen ticket';
+      return 'Ticket print rule';
     case 'customer_receipt':
-      return 'Customer receipt';
+      return 'Receipt print rule';
     default:
       return ruleType;
   }
@@ -47,15 +52,24 @@ export function PrintersSettingsMain() {
   const [selectedTab, setSelectedTab] = useState(TAB_PRINTERS);
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [rules, setRules] = useState<PrintingRule[]>([]);
-  const [addPrinterOpen, setAddPrinterOpen] = useState(false);
+  const [addPrinterPhase, setAddPrinterPhase] = useState<AddPrinterPhase>('idle');
+  const [pendingCatalogEntry, setPendingCatalogEntry] =
+    useState<SquareAccessoryPrinterCatalogEntry | null>(null);
   const [addRuleOpen, setAddRuleOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [addRuleDefaultType, setAddRuleDefaultType] = useState<PrintingRule['ruleType'] | undefined>(
     undefined,
   );
 
-  const openAddPrinter = () => setAddPrinterOpen(true);
-  const closeAddPrinter = () => setAddPrinterOpen(false);
+  const openAddPrinter = () => setAddPrinterPhase('usb_pick');
+  const closeAddPrinter = () => {
+    setAddPrinterPhase('idle');
+    setPendingCatalogEntry(null);
+  };
+  const handleUsbPrinterSelected = (entry: SquareAccessoryPrinterCatalogEntry) => {
+    setPendingCatalogEntry(entry);
+    setAddPrinterPhase('configure');
+  };
   const openAddRule = () => {
     setEditingRuleId(null);
     setAddRuleDefaultType(undefined);
@@ -78,7 +92,13 @@ export function PrintersSettingsMain() {
     setAddRuleOpen(true);
   };
 
-  const handleDeleteKitchenRule = (ruleId: string) => {
+  const openCustomerReceiptRuleCreateFromPrinter = () => {
+    setEditingRuleId(null);
+    setAddRuleDefaultType('customer_receipt');
+    setAddRuleOpen(true);
+  };
+
+  const handleDeleteRule = (ruleId: string) => {
     setRules((prev) => prev.filter((r) => r.id !== ruleId));
     if (editingRuleId === ruleId) {
       setAddRuleOpen(false);
@@ -118,6 +138,11 @@ export function PrintersSettingsMain() {
 
   const kitchenTicketRules = useMemo(
     () => rules.filter((r) => r.ruleType === 'kitchen_ticket').sort((a, b) => a.name.localeCompare(b.name)),
+    [rules],
+  );
+
+  const customerReceiptRules = useMemo(
+    () => rules.filter((r) => r.ruleType === 'customer_receipt').sort((a, b) => a.name.localeCompare(b.name)),
     [rules],
   );
 
@@ -272,15 +297,26 @@ export function PrintersSettingsMain() {
         </MarketPagingTabs.TabPanel>
       </MarketPagingTabs>
 
-      <AddPrinterModal
-        open={addPrinterOpen}
+      <AddPrinterUsbPickerModal
+        open={addPrinterPhase === 'usb_pick'}
         onClose={closeAddPrinter}
+        onSelect={handleUsbPrinterSelected}
+      />
+
+      <AddPrinterModal
+        open={addPrinterPhase === 'configure'}
+        onClose={closeAddPrinter}
+        catalogEntry={pendingCatalogEntry ?? DEFAULT_SQUARE_ACCESSORY_PRINTER}
         onSave={handleSaveNewPrinter}
         existingGroupNames={existingGroupNames}
         kitchenTicketRules={kitchenTicketRules}
         onCreateKitchenRule={openKitchenRuleCreateFromPrinter}
         onEditKitchenRule={openEditRule}
-        onDeleteKitchenRule={handleDeleteKitchenRule}
+        onDeleteKitchenRule={handleDeleteRule}
+        customerReceiptRules={customerReceiptRules}
+        onCreateCustomerReceiptRule={openCustomerReceiptRuleCreateFromPrinter}
+        onEditCustomerReceiptRule={openEditRule}
+        onDeleteCustomerReceiptRule={handleDeleteRule}
       />
 
       <AddRuleModal

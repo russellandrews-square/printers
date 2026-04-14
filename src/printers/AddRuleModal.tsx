@@ -1,9 +1,16 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { MarketButton, MarketDivider, MarketInput, MarketLink } from '@squareup/market-react';
-import { MarketCard, MarketEmptyState, MarketModal, MarketSelect, MarketText } from '@squareup/market-react/trial';
+import {
+  MarketCard,
+  MarketEmptyState,
+  MarketModal,
+  MarketSegmentedControl,
+  MarketSelect,
+  MarketText,
+} from '@squareup/market-react/trial';
 import { MarketTrashcanIcon } from '@squareup/market-react/icons';
 import { AddRuleContentDropdown } from './AddRuleContentDropdown';
-import { AddRuleContentModal, type AddRuleContentOptionId } from './AddRuleContentModal';
+import type { AddRuleContentOptionId } from './addRuleContentOptions';
 import {
   categoryContentSecondaryLine,
   mergeEntireCategorySave,
@@ -14,7 +21,7 @@ import {
   FULFILLMENT_RULE_OPTIONS,
   SOURCE_RULE_OPTIONS,
 } from './printingRuleFieldOptions';
-import type { EntireCategoryRuleContent, PrintingRule } from './types';
+import type { EntireCategoryRuleContent, PrintingRule, PrintingRuleType } from './types';
 import { useViewTransitionVisibility } from './useViewTransitionVisibility';
 import './AddRuleModal.css';
 
@@ -25,7 +32,7 @@ export type AddRuleModalProps = {
   onSave: (rule: Omit<PrintingRule, 'id'>, existingRuleId?: string) => void;
   /** When set, the form is filled from this rule (edit mode) */
   initialRule?: PrintingRule | null;
-  /** Used when creating a new rule (`initialRule` unset). Defaults to kitchen ticket. */
+  /** Used when creating a new rule (`initialRule` unset). Defaults to ticket print (`kitchen_ticket`). */
   defaultRuleType?: PrintingRule['ruleType'];
 };
 
@@ -113,12 +120,12 @@ export function AddRuleModal({
   const [ruleName, setRuleName] = useState('');
   const [fulfillments, setFulfillments] = useState<Set<string>>(() => allSelectedSet(FULFILLMENT_IDS));
   const [sources, setSources] = useState<Set<string>>(() => allSelectedSet(SOURCE_IDS));
-  const [contentModalOpen, setContentModalOpen] = useState(false);
   const [entireCategoriesOpen, setEntireCategoriesOpen] = useState(false);
   const [categoryContents, setCategoryContents] = useState<EntireCategoryRuleContent[]>([]);
   const [pickerDrillCategoryId, setPickerDrillCategoryId] = useState<string | null>(null);
-  /** If true, dismissing the categories flow reopens the “New content” chooser. */
-  const reopenContentChooserOnCategoriesDismiss = useRef(false);
+  const [ruleKind, setRuleKind] = useState<PrintingRuleType>(() => {
+    return initialRule?.ruleType ?? defaultRuleType ?? 'kitchen_ticket';
+  });
 
   const modalShown = useViewTransitionVisibility(open);
 
@@ -126,22 +133,32 @@ export function AddRuleModal({
     if (!modalShown) {
       return;
     }
+    const nextKind: PrintingRuleType = initialRule?.ruleType ?? defaultRuleType ?? 'kitchen_ticket';
+    setRuleKind(nextKind);
     if (initialRule) {
       setRuleName(initialRule.name);
       setFulfillments(valuesFromStoredTitles(initialRule.orderFulfillments, FULFILLMENT_OPTIONS));
       setSources(valuesFromStoredTitles(initialRule.orderSources, SOURCE_OPTIONS));
-      setCategoryContents(initialRule.entireCategoryContent ?? []);
+      setCategoryContents(
+        initialRule.ruleType === 'kitchen_ticket' ? (initialRule.entireCategoryContent ?? []) : [],
+      );
     } else {
       setRuleName('');
       setFulfillments(allSelectedSet(FULFILLMENT_IDS));
       setSources(allSelectedSet(SOURCE_IDS));
       setCategoryContents([]);
     }
-    setContentModalOpen(false);
     setEntireCategoriesOpen(false);
     setPickerDrillCategoryId(null);
-    reopenContentChooserOnCategoriesDismiss.current = false;
-  }, [modalShown, initialRule?.id]);
+  }, [modalShown, initialRule?.id, defaultRuleType]);
+
+  useEffect(() => {
+    if (ruleKind === 'customer_receipt') {
+      setCategoryContents([]);
+      setEntireCategoriesOpen(false);
+      setPickerDrillCategoryId(null);
+    }
+  }, [ruleKind]);
 
   const fulfillmentSelectValues = useMemo(
     () => withSelectAllValue(fulfillments, FULFILLMENT_IDS),
@@ -161,50 +178,38 @@ export function AddRuleModal({
   const handleEntireCategoriesSave = useCallback((saved: EntireCategoryRuleContent[]) => {
     setCategoryContents((prev) => mergeEntireCategorySave(prev, saved));
     setEntireCategoriesOpen(false);
-    setContentModalOpen(false);
     setPickerDrillCategoryId(null);
-    reopenContentChooserOnCategoriesDismiss.current = false;
   }, []);
 
   const handleEntireCategoriesDismiss = useCallback(() => {
     setEntireCategoriesOpen(false);
     setPickerDrillCategoryId(null);
-    if (reopenContentChooserOnCategoriesDismiss.current) {
-      setContentModalOpen(true);
-    }
-    reopenContentChooserOnCategoriesDismiss.current = false;
   }, []);
 
   const openEntireCategoriesFromChooser = useCallback(() => {
-    reopenContentChooserOnCategoriesDismiss.current = true;
     setPickerDrillCategoryId(null);
-    setContentModalOpen(false);
     setEntireCategoriesOpen(true);
   }, []);
 
   const openEntireCategoriesEditor = useCallback((categoryId: string) => {
-    reopenContentChooserOnCategoriesDismiss.current = false;
     setPickerDrillCategoryId(categoryId);
     setEntireCategoriesOpen(true);
   }, []);
 
-  const handleAddContentPick = useCallback(
-    (id: AddRuleContentOptionId) => {
-      if (id === 'entire-categories') {
-        openEntireCategoriesFromChooser();
-      } else {
-        setContentModalOpen(true);
-      }
-    },
-    [openEntireCategoriesFromChooser],
-  );
+  const handleAddContentPick = useCallback((id: AddRuleContentOptionId) => {
+    if (id === 'entire-categories') {
+      openEntireCategoriesFromChooser();
+    }
+  }, [openEntireCategoriesFromChooser]);
 
   if (!modalShown) {
     return null;
   }
 
   const ruleNameValid = ruleName.trim().length > 0;
-  const headerTitle = ruleName.trim() || 'New print rule';
+  const newRulePlaceholderTitle =
+    ruleKind === 'customer_receipt' ? 'New receipt print rule' : 'New ticket print rule';
+  const headerTitle = ruleName.trim() || newRulePlaceholderTitle;
 
   const handleSave = () => {
     const name = ruleName.trim();
@@ -214,14 +219,22 @@ export function AddRuleModal({
     onSave(
       {
         name,
-        ruleType: initialRule?.ruleType ?? defaultRuleType ?? 'kitchen_ticket',
+        ruleType: ruleKind,
         orderFulfillments: titlesForValues(fulfillments, FULFILLMENT_OPTIONS),
         orderSources: titlesForValues(sources, SOURCE_OPTIONS),
-        entireCategoryContent: categoryContents.length > 0 ? categoryContents : undefined,
+        entireCategoryContent:
+          ruleKind === 'kitchen_ticket' && categoryContents.length > 0
+            ? categoryContents
+            : undefined,
       },
       initialRule?.id,
     );
     onClose();
+  };
+
+  const handleRuleKindChange = (e: CustomEvent<{ value: string }>) => {
+    const v = e.detail.value as PrintingRuleType;
+    setRuleKind(v);
   };
 
   return (
@@ -230,12 +243,11 @@ export function AddRuleModal({
         type="full"
         contentWidth="regular"
         onClose={onClose}
-        noVeil={entireCategoriesOpen || contentModalOpen}
+        noVeil={entireCategoriesOpen}
       >
         <MarketModal.Header
           contentWidth="regular"
           title={headerTitle}
-          secondaryText="Kitchen print rule"
           leadingActions={<MarketModal.CloseButton type="button" onClick={onClose} />}
           trailingActions={
             <MarketButton
@@ -250,10 +262,21 @@ export function AddRuleModal({
         />
 
         <MarketModal.Content>
+          <div className="add-rule-modal__rule-kind">
+            <MarketSegmentedControl value={ruleKind} onChange={handleRuleKindChange} aria-label="Rule type">
+              <MarketSegmentedControl.Segment value="kitchen_ticket" label="Ticket" />
+              <MarketSegmentedControl.Segment value="customer_receipt" label="Receipt" />
+            </MarketSegmentedControl>
+          </div>
+
           <div className="add-rule-modal__fields">
             <MarketInput
               label="Rule name"
-              placeholder="Rule name"
+              placeholder={
+                ruleKind === 'customer_receipt'
+                  ? 'Rule name (like Print Host Receipts, Print Bar Receipts, etc.)'
+                  : 'Rule name (like Print Bar Tickets, Print Salad Tickets, Print All Tickets, etc.)'
+              }
               value={ruleName}
               onChange={(e) => setRuleName(e.target.value)}
             />
@@ -287,89 +310,87 @@ export function AddRuleModal({
             </MarketSelect>
           </div>
 
-          <MarketDivider margin="large"/>
+          {ruleKind === 'kitchen_ticket' && (
+            <>
+              <MarketDivider margin="large" />
 
-          <section className="add-rule-modal__section">
-            <MarketText
-              className="add-rule-modal__section-title"
-              component="h2"
-              typeStyle="heading-20"
-              textColor="text-10"
-            >
-              Print orders with this content
-            </MarketText>
+              <section className="add-rule-modal__section">
+                <MarketText
+                  className="add-rule-modal__section-title"
+                  component="h2"
+                  typeStyle="heading-20"
+                  textColor="text-10"
+                >
+                  Print orders with this content
+                </MarketText>
 
-            {categoryContents.length === 0 ? (
-              <MarketEmptyState
-                primaryText="No content added yet"
-                secondaryText="Add specific categories, items, and modifiers."
-                actions={
-                  <div className="add-rule-modal__empty-actions">
+                {categoryContents.length === 0 ? (
+                  <MarketEmptyState
+                    primaryText="No content added yet"
+                    secondaryText="Add specific categories, items, and modifiers."
+                    actions={
+                      <div className="add-rule-modal__empty-actions">
+                        <AddRuleContentDropdown
+                          className="add-rule-modal__add-content-dropdown"
+                          triggerClassName="add-rule-modal__add-content-dropdown-trigger"
+                          onPick={handleAddContentPick}
+                        />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <div className="add-rule-modal__content-list">
+                    {categoryContents.map((row) => {
+                      const cat = menuCategoryById(row.categoryId);
+                      const title = cat ? `${cat.name} (Category)` : `${row.categoryId} (Category)`;
+                      const secondary = categoryContentSecondaryLine(row, cat);
+                      return (
+                        <MarketCard
+                          key={row.categoryId}
+                          title={title}
+                          secondaryText={secondary}
+                          verticalAlignment={secondary ? 'top' : 'center'}
+                          trailingAccessory={
+                            <div className="add-rule-modal__content-card-actions">
+                              <MarketLink
+                                type="button"
+                                standalone
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  openEntireCategoriesEditor(row.categoryId);
+                                }}
+                              >
+                                Edit
+                              </MarketLink>
+                              <MarketButton
+                                type="button"
+                                rank="tertiary"
+                                destructive
+                                aria-label={`Remove ${cat?.name ?? 'category'}`}
+                                icon={<MarketTrashcanIcon aria-hidden />}
+                                onClick={() =>
+                                  setCategoryContents((prev) =>
+                                    prev.filter((c) => c.categoryId !== row.categoryId),
+                                  )
+                                }
+                              />
+                            </div>
+                          }
+                        />
+                      );
+                    })}
                     <AddRuleContentDropdown
                       className="add-rule-modal__add-content-dropdown"
                       triggerClassName="add-rule-modal__add-content-dropdown-trigger"
                       onPick={handleAddContentPick}
                     />
                   </div>
-                }
-              />
-            ) : (
-              <div className="add-rule-modal__content-list">
-                {categoryContents.map((row) => {
-                  const cat = menuCategoryById(row.categoryId);
-                  const title = cat ? `${cat.name} (Category)` : `${row.categoryId} (Category)`;
-                  const secondary = categoryContentSecondaryLine(row, cat);
-                  return (
-                    <MarketCard
-                      key={row.categoryId}
-                      title={title}
-                      secondaryText={secondary}
-                      verticalAlignment={secondary ? 'top' : 'center'}
-                      trailingAccessory={
-                        <div className="add-rule-modal__content-card-actions">
-                          <MarketLink
-                            type="button"
-                            standalone
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openEntireCategoriesEditor(row.categoryId);
-                            }}
-                          >
-                            Edit
-                          </MarketLink>
-                          <MarketButton
-                            type="button"
-                            rank="tertiary"
-                            destructive
-                            aria-label={`Remove ${cat?.name ?? 'category'}`}
-                            icon={<MarketTrashcanIcon aria-hidden />}
-                            onClick={() =>
-                              setCategoryContents((prev) =>
-                                prev.filter((c) => c.categoryId !== row.categoryId),
-                              )
-                            }
-                          />
-                        </div>
-                      }
-                    />
-                  );
-                })}
-                <AddRuleContentDropdown
-                  className="add-rule-modal__add-content-dropdown"
-                  triggerClassName="add-rule-modal__add-content-dropdown-trigger"
-                  onPick={handleAddContentPick}
-                />
-              </div>
-            )}
-          </section>
+                )}
+              </section>
+            </>
+          )}
         </MarketModal.Content>
       </MarketModal>
-
-      <AddRuleContentModal
-        open={contentModalOpen}
-        onClose={() => setContentModalOpen(false)}
-        onOpenEntireCategories={openEntireCategoriesFromChooser}
-      />
 
       <EntireCategoriesPicker
         open={entireCategoriesOpen}

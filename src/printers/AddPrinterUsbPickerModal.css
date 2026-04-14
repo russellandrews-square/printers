@@ -1,0 +1,10 @@
+.add-printer-usb-picker-modal__options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-printer-usb-picker-modal__thumb {
+  border-radius: 8px;
+  object-fit: contain;
+}
