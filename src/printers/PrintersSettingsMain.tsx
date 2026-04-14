@@ -50,20 +50,41 @@ export function PrintersSettingsMain() {
   const [addPrinterOpen, setAddPrinterOpen] = useState(false);
   const [addRuleOpen, setAddRuleOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [addRuleDefaultType, setAddRuleDefaultType] = useState<PrintingRule['ruleType'] | undefined>(
+    undefined,
+  );
 
   const openAddPrinter = () => setAddPrinterOpen(true);
   const closeAddPrinter = () => setAddPrinterOpen(false);
   const openAddRule = () => {
     setEditingRuleId(null);
+    setAddRuleDefaultType(undefined);
     setAddRuleOpen(true);
   };
   const closeAddRule = () => {
     setAddRuleOpen(false);
     setEditingRuleId(null);
+    setAddRuleDefaultType(undefined);
   };
   const openEditRule = (ruleId: string) => {
     setEditingRuleId(ruleId);
+    setAddRuleDefaultType(undefined);
     setAddRuleOpen(true);
+  };
+
+  const openKitchenRuleCreateFromPrinter = () => {
+    setEditingRuleId(null);
+    setAddRuleDefaultType('kitchen_ticket');
+    setAddRuleOpen(true);
+  };
+
+  const handleDeleteKitchenRule = (ruleId: string) => {
+    setRules((prev) => prev.filter((r) => r.id !== ruleId));
+    if (editingRuleId === ruleId) {
+      setAddRuleOpen(false);
+      setEditingRuleId(null);
+      setAddRuleDefaultType(undefined);
+    }
   };
 
   const handleSaveNewPrinter = (draft: Omit<Printer, 'id'>) => {
@@ -86,6 +107,19 @@ export function PrintersSettingsMain() {
   );
 
   const groupedPrinters = useMemo(() => groupPrinters(printers), [printers]);
+
+  const existingGroupNames = useMemo(
+    () =>
+      [...new Set(printers.map((p) => p.group).filter((g): g is string => Boolean(g)))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [printers],
+  );
+
+  const kitchenTicketRules = useMemo(
+    () => rules.filter((r) => r.ruleType === 'kitchen_ticket').sort((a, b) => a.name.localeCompare(b.name)),
+    [rules],
+  );
 
   const headerTitle = selectedTab === TAB_PRINTERS ? 'Printers' : 'Rules';
 
@@ -157,6 +191,17 @@ export function PrintersSettingsMain() {
                           mode="transient"
                           title={p.name}
                           secondaryText={p.modelId}
+                          leadingAccessory={
+                            p.imageUrl ? (
+                              <img
+                                className="printers-settings-main__printer-thumb"
+                                src={p.imageUrl}
+                                alt=""
+                                width={56}
+                                height={56}
+                              />
+                            ) : undefined
+                          }
                           trailingAccessory={
                             <MarketText
                               component="span"
@@ -186,6 +231,7 @@ export function PrintersSettingsMain() {
               <MarketEmptyState
                 borderless
                 primaryText="No rules to show"
+                secondaryText="Set rules for what printers should and shouldn't print."
                 actions={
                   <MarketButton rank="primary" type="button" onClick={openAddRule}>
                     Add rule
@@ -230,6 +276,11 @@ export function PrintersSettingsMain() {
         open={addPrinterOpen}
         onClose={closeAddPrinter}
         onSave={handleSaveNewPrinter}
+        existingGroupNames={existingGroupNames}
+        kitchenTicketRules={kitchenTicketRules}
+        onCreateKitchenRule={openKitchenRuleCreateFromPrinter}
+        onEditKitchenRule={openEditRule}
+        onDeleteKitchenRule={handleDeleteKitchenRule}
       />
 
       <AddRuleModal
@@ -237,6 +288,7 @@ export function PrintersSettingsMain() {
         onClose={closeAddRule}
         onSave={handleSaveRule}
         initialRule={editingRule}
+        defaultRuleType={addRuleDefaultType}
       />
     </>
   );

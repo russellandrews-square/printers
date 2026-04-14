@@ -10,6 +10,10 @@ import {
   menuCategoryById,
 } from './entireCategoryRuleUtils';
 import { EntireCategoriesPicker } from './EntireCategoriesPicker';
+import {
+  FULFILLMENT_RULE_OPTIONS,
+  SOURCE_RULE_OPTIONS,
+} from './printingRuleFieldOptions';
 import type { EntireCategoryRuleContent, PrintingRule } from './types';
 import { useViewTransitionVisibility } from './useViewTransitionVisibility';
 import './AddRuleModal.css';
@@ -21,25 +25,14 @@ export type AddRuleModalProps = {
   onSave: (rule: Omit<PrintingRule, 'id'>, existingRuleId?: string) => void;
   /** When set, the form is filled from this rule (edit mode) */
   initialRule?: PrintingRule | null;
+  /** Used when creating a new rule (`initialRule` unset). Defaults to kitchen ticket. */
+  defaultRuleType?: PrintingRule['ruleType'];
 };
 
 const SELECT_ALL = '__select_all__';
 
-const FULFILLMENT_OPTIONS = [
-  { value: 'catering', title: 'Catering' },
-  { value: 'delivery', title: 'Delivery' },
-  { value: 'dine-in', title: 'Dine-in' },
-  { value: 'pick-up', title: 'Pick up' },
-  { value: 'to-go', title: 'To go' },
-];
-
-const SOURCE_OPTIONS = [
-  { value: 'delivery-app', title: 'Delivery app' },
-  { value: 'phone-call', title: 'Phone call' },
-  { value: 'pos', title: 'POS' },
-  { value: 'walk-in', title: 'Walk-in' },
-  { value: 'website', title: 'Website' },
-];
+const FULFILLMENT_OPTIONS = [...FULFILLMENT_RULE_OPTIONS];
+const SOURCE_OPTIONS = [...SOURCE_RULE_OPTIONS];
 
 const FULFILLMENT_IDS = FULFILLMENT_OPTIONS.map((o) => o.value);
 const SOURCE_IDS = SOURCE_OPTIONS.map((o) => o.value);
@@ -110,7 +103,13 @@ function valuesFromStoredTitles(
   return next;
 }
 
-export function AddRuleModal({ open, onClose, onSave, initialRule = null }: AddRuleModalProps) {
+export function AddRuleModal({
+  open,
+  onClose,
+  onSave,
+  initialRule = null,
+  defaultRuleType,
+}: AddRuleModalProps) {
   const [ruleName, setRuleName] = useState('');
   const [fulfillments, setFulfillments] = useState<Set<string>>(() => allSelectedSet(FULFILLMENT_IDS));
   const [sources, setSources] = useState<Set<string>>(() => allSelectedSet(SOURCE_IDS));
@@ -215,7 +214,7 @@ export function AddRuleModal({ open, onClose, onSave, initialRule = null }: AddR
     onSave(
       {
         name,
-        ruleType: initialRule?.ruleType ?? 'kitchen_ticket',
+        ruleType: initialRule?.ruleType ?? defaultRuleType ?? 'kitchen_ticket',
         orderFulfillments: titlesForValues(fulfillments, FULFILLMENT_OPTIONS),
         orderSources: titlesForValues(sources, SOURCE_OPTIONS),
         entireCategoryContent: categoryContents.length > 0 ? categoryContents : undefined,

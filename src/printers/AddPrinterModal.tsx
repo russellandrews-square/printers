@@ -1,16 +1,20 @@
-import { useState } from 'react';
-import { MarketButton, MarketDivider, MarketLink, MarketPill, MarketToggle } from '@squareup/market-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { MarketButton, MarketDivider, MarketInput, MarketLink, MarketPill } from '@squareup/market-react';
 import {
   MarketButtonGroup,
+  MarketCard,
+  MarketCombobox,
+  MarketComboboxPresentationMode,
+  MarketEmptyState,
+  MarketGrid,
   MarketModal,
   MarketSelect,
   MarketText,
 } from '@squareup/market-react/trial';
-import {
-  MarketEllipsisHorizontalIcon,
-  MarketGripDotsVerticalIcon,
-} from '@squareup/market-react/icons';
-import type { Printer } from './types';
+import { MarketEllipsisHorizontalIcon, MarketTrashcanIcon } from '@squareup/market-react/icons';
+import type { Printer, PrintingRule } from './types';
+import { kitchenTicketRuleSummary } from './printingRuleSummary';
+import { DEFAULT_SQUARE_ACCESSORY_PRINTER } from './squareAccessoryPrinterCatalog';
 import { useViewTransitionVisibility } from './useViewTransitionVisibility';
 import './AddPrinterModal.css';
 
@@ -18,63 +22,146 @@ export type AddPrinterModalProps = {
   open: boolean;
   onClose: () => void;
   onSave: (printer: Omit<Printer, 'id'>) => void;
+  /** Group labels already used by saved printers (combobox starts empty when this is empty). */
+  existingGroupNames?: string[];
+  kitchenTicketRules: PrintingRule[];
+  onCreateKitchenRule: () => void;
+  onEditKitchenRule: (ruleId: string) => void;
+  onDeleteKitchenRule: (ruleId: string) => void;
 };
-
-const NAME_OPTIONS = [
-  { value: 'main-bar', title: 'Main Bar Printer' },
-  { value: 'dessert', title: 'Dessert Printer' },
-  { value: 'kitchen', title: 'Kitchen Printer' },
-];
-
-const GROUP_OPTIONS = [
-  { value: 'bar', title: 'Bar printers' },
-  { value: 'kitchen', title: 'Kitchen printers' },
-  { value: 'foh', title: 'Front of house printers' },
-];
 
 const PAPER_OPTIONS = [
   { value: '62', title: '62mm die-cut' },
   { value: '80', title: '80mm roll' },
 ];
 
-export function AddPrinterModal({ open, onClose, onSave }: AddPrinterModalProps) {
-  const [name, setName] = useState<string>('main-bar');
-  const [group, setGroup] = useState<string>('bar');
+type GroupOption =
+  | { kind: 'group'; name: string }
+  | { kind: 'create'; name: string };
+
+function groupOptionKey(o: GroupOption): string {
+  return o.kind === 'create' ? `create:${o.name}` : `group:${o.name}`;
+}
+
+function groupOptionLabel(o: GroupOption): string {
+  return o.kind === 'create' ? `Create group "${o.name}"` : o.name;
+}
+
+export function AddPrinterModal({
+  open,
+  onClose,
+  onSave,
+  existingGroupNames = [],
+  kitchenTicketRules,
+  onCreateKitchenRule,
+  onEditKitchenRule,
+  onDeleteKitchenRule,
+}: AddPrinterModalProps) {
+  const [name, setName] = useState('');
   const [paper, setPaper] = useState<string>('62');
-  const [kitchenRuleEnabled, setKitchenRuleEnabled] = useState(true);
+  const [sessionGroupNames, setSessionGroupNames] = useState<string[]>([]);
+  const [groupInputValue, setGroupInputValue] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState<GroupOption | null>(null);
+
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const modalShown = useViewTransitionVisibility(open);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setName('');
+    setPaper('62');
+    setGroupInputValue('');
+    setSelectedGroup(null);
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open || !modalShown) {
+      return;
+    }
+    const id = requestAnimationFrame(() => {
+      nameInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, modalShown]);
+
+  const catalog = DEFAULT_SQUARE_ACCESSORY_PRINTER;
+  const allGroupNames = useMemo(
+    () => [...new Set([...existingGroupNames, ...sessionGroupNames])].sort((a, b) => a.localeCompare(b)),
+    [existingGroupNames, sessionGroupNames],
+  );
+
+  const groupComboboxOptions = useMemo((): GroupOption[] => {
+    const q = groupInputValue.trim();
+    if (q.length === 0) {
+      return [];
+    }
+    const qLower = q.toLowerCase();
+    const matches = allGroupNames.filter((g) => g.toLowerCase().includes(qLower));
+    const exact = allGroupNames.some((g) => g.toLowerCase() === qLower);
+    const opts: GroupOption[] = matches.map((name) => ({ kind: 'group' as const, name }));
+    if (!exact) {
+      opts.push({ kind: 'create', name: q });
+    }
+    return opts;
+  }, [allGroupNames, groupInputValue]);
 
   if (!modalShown) {
     return null;
   }
 
-  const nameTitle = NAME_OPTIONS.find((o) => o.value === name)?.title ?? 'Printer';
-  const modelId = 'STAR GH9377R62';
+  const nameTitle = name.trim() !== '' ? name.trim() : 'Printer';
+
+  const handleGroupChange = (value: GroupOption | null) => {
+    if (!value) {
+      setSelectedGroup(null);
+      return;
+    }
+    if (value.kind === 'create') {
+      setSessionGroupNames((prev) =>
+        prev.includes(value.name) ? prev : [...prev, value.name],
+      );
+      setSelectedGroup({ kind: 'group', name: value.name });
+      return;
+    }
+    setSelectedGroup(value);
+  };
 
   const handleSave = () => {
-    const groupTitle = GROUP_OPTIONS.find((o) => o.value === group)?.title ?? '';
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+    const groupTitle = selectedGroup?.kind === 'group' ? selectedGroup.name : undefined;
     onSave({
-      name: nameTitle,
+      name: trimmed,
       status: 'online',
       group: groupTitle || undefined,
-      modelId,
+      modelId: catalog.modelId,
+      imageUrl: catalog.imageUrl,
     });
     onClose();
   };
 
   return (
-    <MarketModal type="partial" onClose={onClose}>
+    <MarketModal type="full" contentWidth="regular" onClose={onClose}>
       <MarketModal.Header
         contentWidth="regular"
         title={nameTitle}
-        secondaryText={modelId}
+        secondaryText={catalog.modelId}
         leadingActions={
           <MarketModal.CloseButton type="button" onClick={onClose} />
         }
         trailingActions={
           <MarketButtonGroup layout="side" maxVisibleItems={4}>
-            <MarketButton type="button" rank="primary" onClick={handleSave}>
+            <MarketButton
+              type="button"
+              rank="primary"
+              onClick={handleSave}
+              disabled={!name.trim()}
+            >
               Save
             </MarketButton>
             <MarketButton type="button" rank="secondary" onClick={() => undefined}>
@@ -92,10 +179,10 @@ export function AddPrinterModal({ open, onClose, onSave }: AddPrinterModalProps)
 
       <MarketModal.Content >
         <div className="add-printer-modal__hero">
-          <div
+          <img
             className="add-printer-modal__hero-visual"
-            role="img"
-            aria-label="Printer preview"
+            src={catalog.imageUrl}
+            alt={catalog.catalogName}
           />
         </div>
 
@@ -109,30 +196,26 @@ export function AddPrinterModal({ open, onClose, onSave }: AddPrinterModalProps)
             Details
           </MarketText>
           <div className="add-printer-modal__fields">
-            <MarketSelect
+            <MarketInput
+              ref={nameInputRef}
               label="Name"
-              selectedValue={name}
-              onSelectionChange={(e) => {
-                const v = e.detail.value;
-                if (v != null) setName(String(v));
-              }}
-            >
-              {NAME_OPTIONS.map((o) => (
-                <MarketSelect.Option key={o.value} value={o.value} title={o.title} />
-              ))}
-            </MarketSelect>
-            <MarketSelect
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <MarketCombobox<GroupOption>
+              multiple={false}
               label="Group"
-              selectedValue={group}
-              onSelectionChange={(e) => {
-                const v = e.detail.value;
-                if (v != null) setGroup(String(v));
-              }}
-            >
-              {GROUP_OPTIONS.map((o) => (
-                <MarketSelect.Option key={o.value} value={o.value} title={o.title} />
-              ))}
-            </MarketSelect>
+              placeholder="Search or create a group like Bar, Kitchen, etc."
+              presentationMode={MarketComboboxPresentationMode.ON_INPUT}
+              inputValue={groupInputValue}
+              onInputChange={setGroupInputValue}
+              value={selectedGroup}
+              onChange={handleGroupChange}
+              options={groupComboboxOptions}
+              getKey={groupOptionKey}
+              getLabel={groupOptionLabel}
+            />
             <MarketSelect
               label="Paper size"
               selectedValue={paper}
@@ -195,37 +278,58 @@ export function AddPrinterModal({ open, onClose, onSave }: AddPrinterModalProps)
           >
             Kitchen ticket rules
           </MarketText>
-          <div className="add-printer-modal__rule-row">
-            <span className="add-printer-modal__rule-grip" aria-hidden>
-              <MarketGripDotsVerticalIcon size="medium" />
-            </span>
-            <div className="add-printer-modal__rule-body">
-              <MarketText component="p" typeStyle="semibold-20" textColor="text-10" withMargin={false}>
-                Cocktails and beer
-              </MarketText>
-              <MarketText
-                component="p"
-                typeStyle="paragraph-20"
-                textColor="text-30"
-                withMargin={false}
-                className="add-printer-modal__muted"
-              >
-                Dine-in orders, from anywhere, only Cocktails and Beer
-              </MarketText>
-            </div>
-            <div className="add-printer-modal__rule-actions">
-              <MarketToggle
-                checked={kitchenRuleEnabled}
-                onChange={() => setKitchenRuleEnabled((v) => !v)}
-                aria-label="Enable Cocktails and beer kitchen ticket rule"
+          {kitchenTicketRules.length === 0 ? (
+            <div className="add-printer-modal__kitchen-empty">
+              <MarketEmptyState
+                borderless
+                primaryText="No kitchen ticket rules yet"
+                secondaryText="Create a rule to choose which orders print on this printer."
+                actions={
+                  <MarketButton rank="primary" type="button" onClick={onCreateKitchenRule}>
+                    Create kitchen ticket rule
+                  </MarketButton>
+                }
               />
             </div>
-          </div>
-          <div className="add-printer-modal__add-link">
-            <MarketLink type="button" standalone onClick={() => undefined}>
-              + Add kitchen ticket rule
-            </MarketLink>
-          </div>
+          ) : (
+            <div className="add-printer-modal__kitchen-rules-grid">
+              <MarketGrid
+                columns={{ narrow: 1, medium: 1, wide: 1, extraWide: 1 }}
+                gap={300}
+              >
+                {kitchenTicketRules.map((rule) => (
+                  <MarketGrid.Item key={rule.id}>
+                    <MarketCard
+                      mode="transient"
+                      title={rule.name}
+                      secondaryText={kitchenTicketRuleSummary(rule)}
+                      onClick={() => onEditKitchenRule(rule.id)}
+                      trailingAccessory={
+                        <div
+                          className="add-printer-modal__kitchen-rule-card-trailing"
+                          onClick={(ev) => ev.stopPropagation()}
+                          onMouseDown={(ev) => ev.stopPropagation()}
+                        >
+                          <MarketButton
+                            type="button"
+                            rank="tertiary"
+                            destructive
+                            aria-label={`Delete rule ${rule.name}`}
+                            icon={<MarketTrashcanIcon aria-hidden />}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onDeleteKitchenRule(rule.id);
+                            }}
+                          />
+                        </div>
+                      }
+                    />
+                  </MarketGrid.Item>
+                ))}
+              </MarketGrid>
+            </div>
+          )}
         </section>
 
         <MarketDivider />

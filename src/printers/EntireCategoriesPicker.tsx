@@ -218,6 +218,7 @@ export function EntireCategoriesPicker({
       onClose={itemsSheetIsOnlyModal ? onDismiss : closeDrill}
     >
       <MarketModal.Header
+        compact
         contentWidth="regular"
         title={drillCategory.name}
         leadingActions={

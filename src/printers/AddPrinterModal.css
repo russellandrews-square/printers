@@ -47,31 +47,18 @@
   color: var(--market-core-text-30-color, rgba(0, 0, 0, 0.55));
 }
 
-.add-printer-modal__rule-row {
+.add-printer-modal__kitchen-empty {
+  padding: 8px 0 4px;
+}
+
+.add-printer-modal__kitchen-rules-grid {
+  padding-top: 4px;
+}
+
+.add-printer-modal__kitchen-rule-card-trailing {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
-}
-
-.add-printer-modal__rule-grip {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--market-core-text-30-color, rgba(0, 0, 0, 0.45));
-}
-
-.add-printer-modal__rule-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.add-printer-modal__rule-actions {
-  flex-shrink: 0;
-  padding-top: 2px;
-}
-
-.add-printer-modal__muted {
-  margin-top: 4px;
+  align-items: center;
+  gap: 16px;
 }
 
 .add-printer-modal__add-link {

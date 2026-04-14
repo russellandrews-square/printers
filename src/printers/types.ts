@@ -8,6 +8,8 @@ export type Printer = {
   group?: string;
   /** Model / device identifier shown in printer details */
   modelId?: string;
+  /** Optional hero / list thumbnail (e.g. from hardware catalog) */
+  imageUrl?: string;
 };
 
 export type PrintingRuleType = 'kitchen_ticket' | 'customer_receipt';

@@ -25,3 +25,11 @@
   outline: 2px solid var(--market-core-focus-ring-color, currentColor);
   outline-offset: -2px;
 }
+
+.printers-settings-main__printer-thumb {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--market-core-radius-100, 6px);
+  object-fit: cover;
+}
