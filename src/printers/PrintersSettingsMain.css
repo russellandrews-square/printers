@@ -11,25 +11,174 @@
   margin-bottom: 16px;
 }
 
+.printers-settings-main__printer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+@media (min-width: 520px) {
+  .printers-settings-main__printer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .printers-settings-main__printer-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.printers-settings-main__printer-grid-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .printers-settings-main__empty {
   display: flex;
   justify-content: center;
   padding: 48px 16px;
 }
 
-.printers-settings-main__rules-row {
+.printers-settings-main__printers-tab-panel {
+  max-width: 864px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.printers-settings-main__print-rules-tab-panel {
+  max-width: 664px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.printers-settings-main__print-rules-list {
+  width: 100%;
+}
+
+.printers-settings-main__print-rule-card-trailing {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.printers-settings-main__printer-grid-item > .printers-settings-main__printer-card {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * Match Market transient cards (e.g. print rule rows): white + light border default,
+ * light gray fill + 1px black border on hover, black fill + light text on active.
+ */
+.printers-settings-main__printer-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  padding: 16px;
+  margin: 0;
+  box-sizing: border-box;
   cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--market-core-radius-200, 12px);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: #fff;
+  box-shadow: none;
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease,
+    color 0.1s ease;
 }
 
-.printers-settings-main__rules-row:focus-visible {
-  outline: 2px solid var(--market-core-focus-ring-color, currentColor);
-  outline-offset: -2px;
+.printers-settings-main__printer-card:hover {
+  background: var(--market-core-fill-40-color, rgba(0, 0, 0, 0.04));
+  border-color: var(--market-core-fill-10-color, rgba(0, 0, 0, 0.03));
 }
 
-.printers-settings-main__printer-thumb {
-  display: block;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--market-core-radius-100, 6px);
-  object-fit: cover;
+.printers-settings-main__printer-card:active {
+  background: var(--market-core-fill-30-color, rgba(0, 0, 0, 0.03));
+  border-color: var(--market-core-fill-10-color, rgba(0, 0, 0, 0.03));
 }
+
+.printers-settings-main__printer-card:focus-visible {
+  outline: 2px solid var(--market-core-focus-ring-color, #006aff);
+  outline-offset: 2px;
+}
+
+.printers-settings-main__printer-card-image-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin-bottom: 16px;
+  border-radius: var(--market-core-radius-100, 8px);
+  /* background: var(--market-core-fill-40-color, rgba(0, 0, 0, 0.04)); */
+}
+
+.printers-settings-main__printer-card-image {
+  max-width: 100%;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.printers-settings-main__printer-card-image-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  background: var(--market-core-fill-50-color, rgba(0, 0, 0, 0.08));
+}
+
+.printers-settings-main__printer-card-footer {
+  flex-shrink: 0;
+}
+
+.printers-settings-main__printer-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.printers-settings-main__printer-card-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.printers-settings-main__printer-card-pill {
+  flex-shrink: 0;
+}
+
+.printers-settings-main__printer-card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.printers-settings-main__printer-card-model {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+

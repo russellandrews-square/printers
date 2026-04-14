@@ -8,6 +8,28 @@
   gap: 16px;
 }
 
+.add-rule-modal__applied-to-empty {
+  align-self: stretch;
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 12px 16px 18px;
+}
+
+.add-rule-modal__applied-to-empty-contents {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.add-rule-modal__applied-to-empty-state {
+  width: 100%;
+  max-width: none;
+  align-items: center;
+}
+
 .add-rule-modal__section {
   margin-top: 8px;
 }
@@ -45,4 +67,12 @@
 
 .add-rule-modal__add-content-dropdown-trigger {
   width: 100%;
+}
+
+/*
+ * MarketPopover (used by MarketSelect) sets z-index 1000 inline; AddRuleModal is 1150, so listboxes
+ * render behind the modal. Match AddRuleContentDropdown (1175), stay below EntireCategoriesPicker (1200).
+ */
+body.add-rule-modal-open [data-placement] {
+  z-index: 1175 !important;
 }

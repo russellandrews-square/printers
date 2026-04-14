@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MarketButton, MarketDivider, MarketInput, MarketLink } from '@squareup/market-react';
 import {
   MarketCard,
@@ -17,11 +17,10 @@ import {
   menuCategoryById,
 } from './entireCategoryRuleUtils';
 import { EntireCategoriesPicker } from './EntireCategoriesPicker';
-import {
-  FULFILLMENT_RULE_OPTIONS,
-  SOURCE_RULE_OPTIONS,
-} from './printingRuleFieldOptions';
-import type { EntireCategoryRuleContent, PrintingRule, PrintingRuleType } from './types';
+import { orderSourceFieldsFromState, orderSourceStateFromRule } from './orderSourceSelection';
+import { OrderSourceMultiSelect } from './OrderSourceMultiSelect';
+import { FULFILLMENT_RULE_OPTIONS } from './printingRuleFieldOptions';
+import type { EntireCategoryRuleContent, Printer, PrintingRule, PrintingRuleType } from './types';
 import { useViewTransitionVisibility } from './useViewTransitionVisibility';
 import './AddRuleModal.css';
 
@@ -34,15 +33,22 @@ export type AddRuleModalProps = {
   initialRule?: PrintingRule | null;
   /** Used when creating a new rule (`initialRule` unset). Defaults to ticket print (`kitchen_ticket`). */
   defaultRuleType?: PrintingRule['ruleType'];
+  /** Saved printers shown in “Applied to”; empty list shows the empty state in the dropdown. */
+  printers: readonly Printer[];
+  /** Opens the connect / add printer flow (e.g. USB picker). */
+  onConnectPrinter?: () => void;
+  /**
+   * When creating a new rule, pre-select these printer IDs in “Applied to” (e.g. printer the user came from).
+   * Ignored when `initialRule` is set.
+   */
+  defaultAppliedPrinterIds?: readonly string[];
 };
 
 const SELECT_ALL = '__select_all__';
 
 const FULFILLMENT_OPTIONS = [...FULFILLMENT_RULE_OPTIONS];
-const SOURCE_OPTIONS = [...SOURCE_RULE_OPTIONS];
 
 const FULFILLMENT_IDS = FULFILLMENT_OPTIONS.map((o) => o.value);
-const SOURCE_IDS = SOURCE_OPTIONS.map((o) => o.value);
 
 function withSelectAllValue(real: Set<string>, allIds: readonly string[]): Set<string> {
   const s = new Set(real);
@@ -110,16 +116,31 @@ function valuesFromStoredTitles(
   return next;
 }
 
+function assignedPrinterIdsFromInitial(
+  stored: string[] | undefined,
+  validPrinterIds: readonly string[],
+): Set<string> {
+  if (stored === undefined || stored.length === 0) {
+    return new Set();
+  }
+  const valid = new Set(validPrinterIds);
+  return new Set(stored.filter((id) => valid.has(id)));
+}
+
 export function AddRuleModal({
   open,
   onClose,
   onSave,
   initialRule = null,
   defaultRuleType,
+  printers,
+  onConnectPrinter,
+  defaultAppliedPrinterIds = [],
 }: AddRuleModalProps) {
   const [ruleName, setRuleName] = useState('');
   const [fulfillments, setFulfillments] = useState<Set<string>>(() => allSelectedSet(FULFILLMENT_IDS));
-  const [sources, setSources] = useState<Set<string>>(() => allSelectedSet(SOURCE_IDS));
+  const [orderSourcesState, setOrderSourcesState] = useState(() => orderSourceStateFromRule(null));
+  const [appliedPrinters, setAppliedPrinters] = useState<Set<string>>(new Set());
   const [entireCategoriesOpen, setEntireCategoriesOpen] = useState(false);
   const [categoryContents, setCategoryContents] = useState<EntireCategoryRuleContent[]>([]);
   const [pickerDrillCategoryId, setPickerDrillCategoryId] = useState<string | null>(null);
@@ -128,6 +149,24 @@ export function AddRuleModal({
   });
 
   const modalShown = useViewTransitionVisibility(open);
+
+  const printersRef = useRef(printers);
+  printersRef.current = printers;
+
+  const printerSelectOptions = useMemo(
+    () =>
+      [...printers]
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((p) => ({ value: p.id, title: p.name })),
+    [printers],
+  );
+  const printerOptionIds = useMemo(() => printerSelectOptions.map((o) => o.value), [printerSelectOptions]);
+
+  const defaultAppliedPrinterKey = useMemo(
+    () => (defaultAppliedPrinterIds ?? []).slice().sort().join('\0'),
+    [defaultAppliedPrinterIds],
+  );
 
   useLayoutEffect(() => {
     if (!modalShown) {
@@ -138,19 +177,29 @@ export function AddRuleModal({
     if (initialRule) {
       setRuleName(initialRule.name);
       setFulfillments(valuesFromStoredTitles(initialRule.orderFulfillments, FULFILLMENT_OPTIONS));
-      setSources(valuesFromStoredTitles(initialRule.orderSources, SOURCE_OPTIONS));
+      setOrderSourcesState(orderSourceStateFromRule(initialRule));
+      setAppliedPrinters(
+        assignedPrinterIdsFromInitial(
+          initialRule.assignedPrinterIds,
+          printersRef.current.map((p) => p.id),
+        ),
+      );
       setCategoryContents(
         initialRule.ruleType === 'kitchen_ticket' ? (initialRule.entireCategoryContent ?? []) : [],
       );
     } else {
       setRuleName('');
       setFulfillments(allSelectedSet(FULFILLMENT_IDS));
-      setSources(allSelectedSet(SOURCE_IDS));
+      setOrderSourcesState(orderSourceStateFromRule(null));
+      const validPrinterIds = new Set(printersRef.current.map((p) => p.id));
+      setAppliedPrinters(
+        new Set((defaultAppliedPrinterIds ?? []).filter((id) => validPrinterIds.has(id))),
+      );
       setCategoryContents([]);
     }
     setEntireCategoriesOpen(false);
     setPickerDrillCategoryId(null);
-  }, [modalShown, initialRule?.id, defaultRuleType]);
+  }, [modalShown, initialRule?.id, defaultRuleType, defaultAppliedPrinterKey]);
 
   useEffect(() => {
     if (ruleKind === 'customer_receipt') {
@@ -160,20 +209,52 @@ export function AddRuleModal({
     }
   }, [ruleKind]);
 
+  useEffect(() => {
+    const valid = new Set(printerOptionIds);
+    setAppliedPrinters((prev) => {
+      const next = new Set([...prev].filter((id) => valid.has(id)));
+      if (next.size === prev.size && [...prev].every((id) => next.has(id))) {
+        return prev;
+      }
+      return next;
+    });
+  }, [printerOptionIds]);
+
+  useEffect(() => {
+    if (!modalShown) {
+      return;
+    }
+    document.body.classList.add('add-rule-modal-open');
+    return () => {
+      document.body.classList.remove('add-rule-modal-open');
+    };
+  }, [modalShown]);
+
   const fulfillmentSelectValues = useMemo(
     () => withSelectAllValue(fulfillments, FULFILLMENT_IDS),
     [fulfillments],
   );
-  const sourceSelectValues = useMemo(() => withSelectAllValue(sources, SOURCE_IDS), [sources]);
+  const appliedPrinterSelectValues = useMemo(() => {
+    if (printerOptionIds.length <= 1) {
+      return appliedPrinters;
+    }
+    return withSelectAllValue(appliedPrinters, printerOptionIds);
+  }, [appliedPrinters, printerOptionIds]);
 
   const fulfillmentSelectionLabel = useMemo(
     () => multiSelectionLabel(fulfillments, FULFILLMENT_OPTIONS),
     [fulfillments],
   );
-  const sourceSelectionLabel = useMemo(
-    () => multiSelectionLabel(sources, SOURCE_OPTIONS),
-    [sources],
-  );
+  const appliedToSelectionLabel = useMemo(() => {
+    if (appliedPrinters.size === 0) {
+      return 'No printers';
+    }
+    if (printerSelectOptions.length === 1) {
+      const only = printerSelectOptions[0];
+      return appliedPrinters.has(only.value) ? only.title : '';
+    }
+    return multiSelectionLabel(appliedPrinters, printerSelectOptions);
+  }, [appliedPrinters, printerSelectOptions]);
 
   const handleEntireCategoriesSave = useCallback((saved: EntireCategoryRuleContent[]) => {
     setCategoryContents((prev) => mergeEntireCategorySave(prev, saved));
@@ -216,12 +297,16 @@ export function AddRuleModal({
     if (!name) {
       return;
     }
+    const orderSourcePayload = orderSourceFieldsFromState(orderSourcesState);
     onSave(
       {
         name,
         ruleType: ruleKind,
         orderFulfillments: titlesForValues(fulfillments, FULFILLMENT_OPTIONS),
-        orderSources: titlesForValues(sources, SOURCE_OPTIONS),
+        orderSources: orderSourcePayload.orderSources,
+        orderSourcePosTerminalIds: orderSourcePayload.orderSourcePosTerminalIds,
+        assignedPrinterIds:
+          appliedPrinters.size > 0 ? [...appliedPrinters] : undefined,
         entireCategoryContent:
           ruleKind === 'kitchen_ticket' && categoryContents.length > 0
             ? categoryContents
@@ -242,6 +327,7 @@ export function AddRuleModal({
       <MarketModal
         type="full"
         contentWidth="regular"
+        zIndex={1150}
         onClose={onClose}
         noVeil={entireCategoriesOpen}
       >
@@ -295,18 +381,55 @@ export function AddRuleModal({
                 <MarketSelect.Option key={o.value} value={o.value} title={o.title} />
               ))}
             </MarketSelect>
+            <OrderSourceMultiSelect
+              value={orderSourcesState}
+              onChange={setOrderSourcesState}
+            />
             <MarketSelect
-              label="Order source"
+              label="Applied to"
               selectionMode="multiple"
-              selectedValues={sourceSelectValues}
-              selectionLabel={sourceSelectionLabel || undefined}
-              placeholder="Select order sources"
-              onSelectionChange={(e) => handleMultiSelectChange(e, SOURCE_IDS, setSources)}
+              selectedValues={appliedPrinterSelectValues}
+              selectionLabel={appliedToSelectionLabel}
+              placeholder="No printers"
+              onSelectionChange={(e) =>
+                handleMultiSelectChange(e, printerOptionIds, setAppliedPrinters)
+              }
             >
-              <MarketSelect.Option value={SELECT_ALL} title="Select all" />
-              {SOURCE_OPTIONS.map((o) => (
-                <MarketSelect.Option key={o.value} value={o.value} title={o.title} />
-              ))}
+              {printerSelectOptions.length === 0 ? (
+                <div
+                  className="add-rule-modal__applied-to-empty"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="add-rule-modal__applied-to-empty-contents">
+                    <MarketEmptyState
+                      className="add-rule-modal__applied-to-empty-state"
+                      borderless
+                      primaryText="No printers are set up yet."
+                      actions={
+                      <MarketButton
+                        rank="primary"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onConnectPrinter?.();
+                        }}
+                      >
+                        Add printer
+                      </MarketButton>
+                    }
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {printerSelectOptions.length > 1 ? (
+                    <MarketSelect.Option value={SELECT_ALL} title="Select all" />
+                  ) : null}
+                  {printerSelectOptions.map((o) => (
+                    <MarketSelect.Option key={o.value} value={o.value} title={o.title} />
+                  ))}
+                </>
+              )}
             </MarketSelect>
           </div>
 

@@ -2,6 +2,8 @@
  * Static hardware catalog for add-printer / list thumbnails.
  */
 
+import type { Printer } from './types';
+
 export type SquareAccessoryPrinterCatalogEntry = {
   id: string;
   catalogName: string;
@@ -36,4 +38,16 @@ export function getSquareAccessoryPrinterCatalogEntry(
   id: string,
 ): SquareAccessoryPrinterCatalogEntry | undefined {
   return SQUARE_ACCESSORY_PRINTER_CATALOG.find((e) => e.id === id);
+}
+
+/** Resolve catalog metadata for the add/edit printer modal from a saved printer row. */
+export function catalogEntryFromSavedPrinter(p: Printer): SquareAccessoryPrinterCatalogEntry {
+  const byModel = SQUARE_ACCESSORY_PRINTER_CATALOG.find((e) => e.modelId === p.modelId);
+  if (byModel) return byModel;
+  return {
+    id: `saved-${p.id}`,
+    catalogName: p.modelId ?? p.name,
+    modelId: p.modelId ?? p.name,
+    imageUrl: p.imageUrl ?? DEFAULT_SQUARE_ACCESSORY_PRINTER.imageUrl,
+  };
 }

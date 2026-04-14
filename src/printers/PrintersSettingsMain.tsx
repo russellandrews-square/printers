@@ -1,132 +1,378 @@
-import { useMemo, useState } from 'react';
-import { MarketButton } from '@squareup/market-react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
+import { MarketButton, MarketPill } from '@squareup/market-react';
+import { MarketTrashcanIcon } from '@squareup/market-react/icons';
 import {
   MarketCard,
   MarketEmptyState,
   MarketGrid,
   MarketHeader,
   MarketPagingTabs,
-  MarketTable,
   MarketText,
 } from '@squareup/market-react/trial';
 import { AddPrinterModal } from './AddPrinterModal';
 import { AddPrinterUsbPickerModal } from './AddPrinterUsbPickerModal';
 import { AddRuleModal } from './AddRuleModal';
 import type { SquareAccessoryPrinterCatalogEntry } from './squareAccessoryPrinterCatalog';
-import { DEFAULT_SQUARE_ACCESSORY_PRINTER } from './squareAccessoryPrinterCatalog';
+import {
+  catalogEntryFromSavedPrinter,
+  DEFAULT_SQUARE_ACCESSORY_PRINTER,
+} from './squareAccessoryPrinterCatalog';
 import type { Printer, PrintingRule } from './types';
+import { printRuleCardSummary } from './printingRuleSummary';
 import './PrintersSettingsMain.css';
 
 const TAB_PRINTERS = 'printers';
-const TAB_RULES = 'rules';
+const TAB_PRINT_RULES = 'print_rules';
 
 type AddPrinterPhase = 'idle' | 'usb_pick' | 'configure';
 
-function ruleTypeLabel(ruleType: PrintingRule['ruleType']): string {
-  switch (ruleType) {
-    case 'kitchen_ticket':
-      return 'Ticket print rule';
-    case 'customer_receipt':
-      return 'Receipt print rule';
-    default:
-      return ruleType;
-  }
-}
+type PrinterSection =
+  | { kind: 'ungrouped'; printers: Printer[] }
+  | { kind: 'group'; groupName: string; printers: Printer[] };
 
-function groupPrinters(printers: Printer[]): { sectionTitle: string; printers: Printer[] }[] {
+/** Ungrouped printers first (no sub-header); then each named group with its own heading, A–Z. */
+function buildPrinterSections(printers: Printer[]): PrinterSection[] {
   const map = new Map<string, Printer[]>();
   for (const p of printers) {
     const key = p.group ?? '';
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(p);
   }
-  return [...map.entries()]
-    .map(([key, items]) => ({
-      sectionTitle: key === '' ? 'Printers' : key,
+
+  const ungrouped = map.get('') ?? [];
+  map.delete('');
+
+  const sections: PrinterSection[] = [];
+
+  if (ungrouped.length > 0) {
+    sections.push({
+      kind: 'ungrouped',
+      printers: [...ungrouped].sort((a, b) => a.name.localeCompare(b.name)),
+    });
+  }
+
+  for (const name of [...map.keys()].sort((a, b) => a.localeCompare(b))) {
+    const items = map.get(name)!;
+    sections.push({
+      kind: 'group',
+      groupName: name,
       printers: [...items].sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .sort((a, b) => a.sectionTitle.localeCompare(b.sectionTitle));
+    });
+  }
+
+  return sections;
+}
+
+function PrinterGridList({
+  printers: sectionPrinters,
+  onEditPrinter,
+}: {
+  printers: Printer[];
+  onEditPrinter: (p: Printer) => void;
+}) {
+  return (
+    <div className="printers-settings-main__printer-grid" role="list">
+      {sectionPrinters.map((p) => (
+        <div
+          key={p.id}
+          className="printers-settings-main__printer-grid-item"
+          role="listitem"
+        >
+          <div
+            role="button"
+            tabIndex={0}
+            className="printers-settings-main__printer-card"
+            aria-label={`Edit printer ${p.name}`}
+            onClick={() => onEditPrinter(p)}
+            onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onEditPrinter(p);
+              }
+            }}
+          >
+            <div className="printers-settings-main__printer-card-image-wrap">
+              {p.imageUrl ? (
+                <img
+                  className="printers-settings-main__printer-card-image"
+                  src={p.imageUrl}
+                  alt=""
+                />
+              ) : (
+                <div
+                  className="printers-settings-main__printer-card-image-placeholder"
+                  aria-hidden
+                />
+              )}
+            </div>
+            <div className="printers-settings-main__printer-card-footer">
+              <div className="printers-settings-main__printer-card-meta">
+                <div className="printers-settings-main__printer-card-title-row">
+                  <MarketText
+                    component="span"
+                    typeStyle="medium-30"
+                    textColor="text-10"
+                    withMargin={false}
+                    className="printers-settings-main__printer-card-name"
+                  >
+                    {p.name}
+                  </MarketText>
+                  <MarketPill
+                    className="printers-settings-main__printer-card-pill"
+                    label={p.status === 'online' ? 'Online' : 'Offline'}
+                    status={p.status === 'online' ? 'success' : 'normal'}
+                    size="small"
+                  />
+                </div>
+                {p.modelId ? (
+                  <MarketText
+                    component="span"
+                    typeStyle="paragraph-20"
+                    textColor="text-20"
+                    withMargin={false}
+                    className="printers-settings-main__printer-card-model"
+                  >
+                    {p.modelId}
+                  </MarketText>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function PrintersSettingsMain() {
   const [selectedTab, setSelectedTab] = useState(TAB_PRINTERS);
   const [printers, setPrinters] = useState<Printer[]>([]);
-  const [rules, setRules] = useState<PrintingRule[]>([]);
+  const [printRules, setPrintRules] = useState<PrintingRule[]>([]);
   const [addPrinterPhase, setAddPrinterPhase] = useState<AddPrinterPhase>('idle');
   const [pendingCatalogEntry, setPendingCatalogEntry] =
     useState<SquareAccessoryPrinterCatalogEntry | null>(null);
-  const [addRuleOpen, setAddRuleOpen] = useState(false);
-  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
-  const [addRuleDefaultType, setAddRuleDefaultType] = useState<PrintingRule['ruleType'] | undefined>(
-    undefined,
-  );
+  const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
+  const [draftExcludedKitchenRuleIds, setDraftExcludedKitchenRuleIds] = useState<string[]>([]);
+  const [draftExcludedReceiptRuleIds, setDraftExcludedReceiptRuleIds] = useState<string[]>([]);
+  const [addPrintRuleModalOpen, setAddPrintRuleModalOpen] = useState(false);
+  const [editingPrintRuleId, setEditingPrintRuleId] = useState<string | null>(null);
+  const [addPrintRuleDefaultType, setAddPrintRuleDefaultType] = useState<
+    PrintingRule['ruleType'] | undefined
+  >(undefined);
+  /** Stable id for a new printer while the configure modal is open (cleared when the flow closes). */
+  const [draftNewPrinterId, setDraftNewPrinterId] = useState<string | null>(null);
+  /** When the user creates a print rule before saving a new printer, the first save must use this id so it matches “Applied to”. */
+  const [pendingPrinterIdForSave, setPendingPrinterIdForSave] = useState<string | null>(null);
+  const [printRuleModalDefaultAppliedPrinterIds, setPrintRuleModalDefaultAppliedPrinterIds] = useState<
+    string[]
+  >([]);
+  const [printRuleModalExtraPrinters, setPrintRuleModalExtraPrinters] = useState<Printer[]>([]);
 
   const openAddPrinter = () => setAddPrinterPhase('usb_pick');
   const closeAddPrinter = () => {
     setAddPrinterPhase('idle');
     setPendingCatalogEntry(null);
+    setEditingPrinter(null);
+    setDraftExcludedKitchenRuleIds([]);
+    setDraftExcludedReceiptRuleIds([]);
+    setDraftNewPrinterId(null);
   };
   const handleUsbPrinterSelected = (entry: SquareAccessoryPrinterCatalogEntry) => {
+    setEditingPrinter(null);
+    // New printer: treat every existing account rule as excluded so the modal starts empty;
+    // rules created while configuring are not in this list and still show. Saved printers use
+    // excluded* ids the same way.
+    setDraftExcludedKitchenRuleIds(
+      printRules.filter((r) => r.ruleType === 'kitchen_ticket').map((r) => r.id),
+    );
+    setDraftExcludedReceiptRuleIds(
+      printRules.filter((r) => r.ruleType === 'customer_receipt').map((r) => r.id),
+    );
+    setPendingPrinterIdForSave(null);
+    setDraftNewPrinterId(crypto.randomUUID());
     setPendingCatalogEntry(entry);
     setAddPrinterPhase('configure');
   };
-  const openAddRule = () => {
-    setEditingRuleId(null);
-    setAddRuleDefaultType(undefined);
-    setAddRuleOpen(true);
+  const openEditPrinter = (printer: Printer) => {
+    setEditingPrinter(printer);
+    setDraftExcludedKitchenRuleIds([]);
+    setDraftExcludedReceiptRuleIds([]);
+    setDraftNewPrinterId(null);
+    setPendingCatalogEntry(catalogEntryFromSavedPrinter(printer));
+    setAddPrinterPhase('configure');
   };
-  const closeAddRule = () => {
-    setAddRuleOpen(false);
-    setEditingRuleId(null);
-    setAddRuleDefaultType(undefined);
+
+  const handleRemoveKitchenRuleFromPrinter = (ruleId: string) => {
+    if (editingPrinter) {
+      setPrinters((prev) =>
+        prev.map((p) =>
+          p.id !== editingPrinter.id
+            ? p
+            : {
+                ...p,
+                excludedKitchenRuleIds: [...new Set([...(p.excludedKitchenRuleIds ?? []), ruleId])],
+              },
+        ),
+      );
+    } else {
+      setDraftExcludedKitchenRuleIds((prev) => (prev.includes(ruleId) ? prev : [...prev, ruleId]));
+    }
   };
-  const openEditRule = (ruleId: string) => {
-    setEditingRuleId(ruleId);
-    setAddRuleDefaultType(undefined);
-    setAddRuleOpen(true);
+
+  const handleRemoveCustomerReceiptRuleFromPrinter = (ruleId: string) => {
+    if (editingPrinter) {
+      setPrinters((prev) =>
+        prev.map((p) =>
+          p.id !== editingPrinter.id
+            ? p
+            : {
+                ...p,
+                excludedCustomerReceiptRuleIds: [
+                  ...new Set([...(p.excludedCustomerReceiptRuleIds ?? []), ruleId]),
+                ],
+              },
+        ),
+      );
+    } else {
+      setDraftExcludedReceiptRuleIds((prev) => (prev.includes(ruleId) ? prev : [...prev, ruleId]));
+    }
+  };
+  const openAddPrintRule = () => {
+    setPrintRuleModalDefaultAppliedPrinterIds([]);
+    setPrintRuleModalExtraPrinters([]);
+    setPendingPrinterIdForSave(null);
+    setEditingPrintRuleId(null);
+    setAddPrintRuleDefaultType(undefined);
+    setAddPrintRuleModalOpen(true);
+  };
+  const closeAddPrintRule = () => {
+    setAddPrintRuleModalOpen(false);
+    setEditingPrintRuleId(null);
+    setAddPrintRuleDefaultType(undefined);
+    setPrintRuleModalDefaultAppliedPrinterIds([]);
+    setPrintRuleModalExtraPrinters([]);
+    setPendingPrinterIdForSave(null);
+  };
+  const openEditPrintRule = (printRuleId: string) => {
+    closeAddPrinter();
+    setPrintRuleModalDefaultAppliedPrinterIds([]);
+    setPrintRuleModalExtraPrinters([]);
+    setEditingPrintRuleId(printRuleId);
+    setAddPrintRuleDefaultType(undefined);
+    setAddPrintRuleModalOpen(true);
+  };
+
+  const handleDeletePrintRule = (printRuleId: string) => {
+    setPrintRules((prev) => prev.filter((r) => r.id !== printRuleId));
+    setPrinters((prev) =>
+      prev.map((p) => {
+        const nextKitchen = p.excludedKitchenRuleIds?.filter((id) => id !== printRuleId);
+        const nextReceipt = p.excludedCustomerReceiptRuleIds?.filter((id) => id !== printRuleId);
+        return {
+          ...p,
+          excludedKitchenRuleIds:
+            nextKitchen && nextKitchen.length > 0 ? nextKitchen : undefined,
+          excludedCustomerReceiptRuleIds:
+            nextReceipt && nextReceipt.length > 0 ? nextReceipt : undefined,
+        };
+      }),
+    );
+    if (editingPrintRuleId === printRuleId) {
+      closeAddPrintRule();
+    }
+  };
+
+  const beginRuleCreationFromPrinter = (ruleType: PrintingRule['ruleType']) => {
+    if (editingPrinter) {
+      setPendingPrinterIdForSave(null);
+      setPrintRuleModalDefaultAppliedPrinterIds([editingPrinter.id]);
+      setPrintRuleModalExtraPrinters([]);
+    } else if (draftNewPrinterId && pendingCatalogEntry) {
+      setPrintRuleModalDefaultAppliedPrinterIds([draftNewPrinterId]);
+      setPrintRuleModalExtraPrinters([
+        {
+          id: draftNewPrinterId,
+          name: pendingCatalogEntry.catalogName,
+          status: 'online',
+          modelId: pendingCatalogEntry.modelId,
+          imageUrl: pendingCatalogEntry.imageUrl,
+        },
+      ]);
+    } else {
+      setPendingPrinterIdForSave(null);
+      setPrintRuleModalDefaultAppliedPrinterIds([]);
+      setPrintRuleModalExtraPrinters([]);
+    }
+    setEditingPrintRuleId(null);
+    setAddPrintRuleDefaultType(ruleType);
+    setAddPrintRuleModalOpen(true);
   };
 
   const openKitchenRuleCreateFromPrinter = () => {
-    setEditingRuleId(null);
-    setAddRuleDefaultType('kitchen_ticket');
-    setAddRuleOpen(true);
+    beginRuleCreationFromPrinter('kitchen_ticket');
   };
 
   const openCustomerReceiptRuleCreateFromPrinter = () => {
-    setEditingRuleId(null);
-    setAddRuleDefaultType('customer_receipt');
-    setAddRuleOpen(true);
+    beginRuleCreationFromPrinter('customer_receipt');
   };
 
-  const handleDeleteRule = (ruleId: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== ruleId));
-    if (editingRuleId === ruleId) {
-      setAddRuleOpen(false);
-      setEditingRuleId(null);
-      setAddRuleDefaultType(undefined);
-    }
-  };
-
-  const handleSaveNewPrinter = (draft: Omit<Printer, 'id'>) => {
-    setPrinters((prev) => [...prev, { ...draft, id: crypto.randomUUID() }]);
-  };
-
-  const handleSaveRule = (draft: Omit<PrintingRule, 'id'>, existingRuleId?: string) => {
-    if (existingRuleId) {
-      setRules((prev) =>
-        prev.map((r) => (r.id === existingRuleId ? { ...draft, id: existingRuleId } : r)),
+  const handleSavePrinter = (draft: Omit<Printer, 'id'>, existingPrinterId?: string) => {
+    if (existingPrinterId) {
+      setPendingPrinterIdForSave(null);
+      setPrinters((prev) =>
+        prev.map((p) =>
+          p.id === existingPrinterId ? { ...p, ...draft, id: existingPrinterId } : p,
+        ),
       );
     } else {
-      setRules((prev) => [...prev, { ...draft, id: crypto.randomUUID() }]);
+      const newId = pendingPrinterIdForSave ?? draftNewPrinterId ?? crypto.randomUUID();
+      setPrinters((prev) => [
+        ...prev,
+        {
+          ...draft,
+          id: newId,
+          excludedKitchenRuleIds:
+            draftExcludedKitchenRuleIds.length > 0 ? [...draftExcludedKitchenRuleIds] : undefined,
+          excludedCustomerReceiptRuleIds:
+            draftExcludedReceiptRuleIds.length > 0 ? [...draftExcludedReceiptRuleIds] : undefined,
+        },
+      ]);
+      setPendingPrinterIdForSave(null);
+      setDraftNewPrinterId(null);
     }
   };
 
-  const editingRule = useMemo(
-    () => (editingRuleId ? rules.find((r) => r.id === editingRuleId) ?? null : null),
-    [editingRuleId, rules],
+  const handleSavePrintRule = (draft: Omit<PrintingRule, 'id'>, existingPrintRuleId?: string) => {
+    if (existingPrintRuleId) {
+      setPrintRules((prev) =>
+        prev.map((r) =>
+          r.id === existingPrintRuleId ? { ...draft, id: existingPrintRuleId } : r,
+        ),
+      );
+    } else {
+      setPrintRules((prev) => [...prev, { ...draft, id: crypto.randomUUID() }]);
+    }
+  };
+
+  const editingPrintRule = useMemo(
+    () =>
+      editingPrintRuleId
+        ? printRules.find((r) => r.id === editingPrintRuleId) ?? null
+        : null,
+    [editingPrintRuleId, printRules],
   );
 
-  const groupedPrinters = useMemo(() => groupPrinters(printers), [printers]);
+  const printersForAddPrintRuleModal = useMemo(() => {
+    const merged = [...printers];
+    for (const extra of printRuleModalExtraPrinters) {
+      if (!merged.some((p) => p.id === extra.id)) {
+        merged.push(extra);
+      }
+    }
+    return merged;
+  }, [printers, printRuleModalExtraPrinters]);
+
+  const printerSections = useMemo(() => buildPrinterSections(printers), [printers]);
 
   const existingGroupNames = useMemo(
     () =>
@@ -136,17 +382,99 @@ export function PrintersSettingsMain() {
     [printers],
   );
 
-  const kitchenTicketRules = useMemo(
-    () => rules.filter((r) => r.ruleType === 'kitchen_ticket').sort((a, b) => a.name.localeCompare(b.name)),
-    [rules],
+  const kitchenTicketPrintRules = useMemo(
+    () =>
+      printRules
+        .filter((r) => r.ruleType === 'kitchen_ticket')
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [printRules],
   );
 
-  const customerReceiptRules = useMemo(
-    () => rules.filter((r) => r.ruleType === 'customer_receipt').sort((a, b) => a.name.localeCompare(b.name)),
-    [rules],
+  const customerReceiptPrintRules = useMemo(
+    () =>
+      printRules
+        .filter((r) => r.ruleType === 'customer_receipt')
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [printRules],
   );
 
-  const headerTitle = selectedTab === TAB_PRINTERS ? 'Printers' : 'Rules';
+  const excludedKitchenRuleIdsForPrinterModal = useMemo(() => {
+    if (editingPrinter) {
+      const live = printers.find((p) => p.id === editingPrinter.id);
+      return new Set(live?.excludedKitchenRuleIds ?? editingPrinter.excludedKitchenRuleIds ?? []);
+    }
+    return new Set(draftExcludedKitchenRuleIds);
+  }, [editingPrinter, printers, draftExcludedKitchenRuleIds]);
+
+  const excludedReceiptRuleIdsForPrinterModal = useMemo(() => {
+    if (editingPrinter) {
+      const live = printers.find((p) => p.id === editingPrinter.id);
+      return new Set(
+        live?.excludedCustomerReceiptRuleIds ?? editingPrinter.excludedCustomerReceiptRuleIds ?? [],
+      );
+    }
+    return new Set(draftExcludedReceiptRuleIds);
+  }, [editingPrinter, printers, draftExcludedReceiptRuleIds]);
+
+  const kitchenTicketPrintRulesForPrinterModal = useMemo(
+    () =>
+      kitchenTicketPrintRules.filter((r) => !excludedKitchenRuleIdsForPrinterModal.has(r.id)),
+    [kitchenTicketPrintRules, excludedKitchenRuleIdsForPrinterModal],
+  );
+
+  const customerReceiptPrintRulesForPrinterModal = useMemo(
+    () =>
+      customerReceiptPrintRules.filter((r) => !excludedReceiptRuleIdsForPrinterModal.has(r.id)),
+    [customerReceiptPrintRules, excludedReceiptRuleIdsForPrinterModal],
+  );
+
+  const kitchenPrintRulesAvailableToAdd = useMemo(
+    () =>
+      kitchenTicketPrintRules.filter((r) => excludedKitchenRuleIdsForPrinterModal.has(r.id)),
+    [kitchenTicketPrintRules, excludedKitchenRuleIdsForPrinterModal],
+  );
+
+  const receiptPrintRulesAvailableToAdd = useMemo(
+    () =>
+      customerReceiptPrintRules.filter((r) => excludedReceiptRuleIdsForPrinterModal.has(r.id)),
+    [customerReceiptPrintRules, excludedReceiptRuleIdsForPrinterModal],
+  );
+
+  const handleAddExistingKitchenRuleToPrinter = (ruleId: string) => {
+    if (editingPrinter) {
+      setPrinters((prev) =>
+        prev.map((p) => {
+          if (p.id !== editingPrinter.id) return p;
+          const next = (p.excludedKitchenRuleIds ?? []).filter((id) => id !== ruleId);
+          return {
+            ...p,
+            excludedKitchenRuleIds: next.length > 0 ? next : undefined,
+          };
+        }),
+      );
+    } else {
+      setDraftExcludedKitchenRuleIds((prev) => prev.filter((id) => id !== ruleId));
+    }
+  };
+
+  const handleAddExistingReceiptRuleToPrinter = (ruleId: string) => {
+    if (editingPrinter) {
+      setPrinters((prev) =>
+        prev.map((p) => {
+          if (p.id !== editingPrinter.id) return p;
+          const next = (p.excludedCustomerReceiptRuleIds ?? []).filter((id) => id !== ruleId);
+          return {
+            ...p,
+            excludedCustomerReceiptRuleIds: next.length > 0 ? next : undefined,
+          };
+        }),
+      );
+    } else {
+      setDraftExcludedReceiptRuleIds((prev) => prev.filter((id) => id !== ruleId));
+    }
+  };
+
+  const headerTitle = selectedTab === TAB_PRINTERS ? 'Printers' : 'Print rules';
 
   const addAction = (
     <MarketButton
@@ -154,10 +482,10 @@ export function PrintersSettingsMain() {
       type="button"
       onClick={() => {
         if (selectedTab === TAB_PRINTERS) openAddPrinter();
-        else openAddRule();
+        else openAddPrintRule();
       }}
     >
-      {selectedTab === TAB_PRINTERS ? 'Add printer' : 'Add rule'}
+      {selectedTab === TAB_PRINTERS ? 'Add printer' : 'Add print rule'}
     </MarketButton>
   );
 
@@ -177,10 +505,13 @@ export function PrintersSettingsMain() {
       >
         <MarketPagingTabs.TabList className="printers-settings-main__tabs">
           <MarketPagingTabs.Tab id={TAB_PRINTERS}>Printers</MarketPagingTabs.Tab>
-          <MarketPagingTabs.Tab id={TAB_RULES}>Rules</MarketPagingTabs.Tab>
+          <MarketPagingTabs.Tab id={TAB_PRINT_RULES}>Print rules</MarketPagingTabs.Tab>
         </MarketPagingTabs.TabList>
 
-        <MarketPagingTabs.TabPanel aria-labelledby={TAB_PRINTERS}>
+        <MarketPagingTabs.TabPanel
+          aria-labelledby={TAB_PRINTERS}
+          className="printers-settings-main__printers-tab-panel"
+        >
           {printers.length === 0 ? (
             <div className="printers-settings-main__empty">
               <MarketEmptyState
@@ -195,104 +526,90 @@ export function PrintersSettingsMain() {
             </div>
           ) : (
             <>
-              {groupedPrinters.map(({ sectionTitle, printers: sectionPrinters }) => (
-                <section key={sectionTitle} className="printers-settings-main__section">
-                  <MarketText
-                    className="printers-settings-main__section-heading"
-                    component="h2"
-                    typeStyle="heading-20"
-                    textColor="text-10"
-                    withMargin={false}
+              {printerSections.map((section, sectionIndex) =>
+                section.kind === 'ungrouped' ? (
+                  <div key="__ungrouped" className="printers-settings-main__section">
+                    <PrinterGridList printers={section.printers} onEditPrinter={openEditPrinter} />
+                  </div>
+                ) : (
+                  <section
+                    key={section.groupName}
+                    className="printers-settings-main__section"
+                    aria-labelledby={`printer-group-heading-${sectionIndex}`}
                   >
-                    {sectionTitle}
-                  </MarketText>
-                  <MarketGrid
-                    columns={{ narrow: 1, medium: 2, wide: 3, extraWide: 4 }}
-                    gap={300}
-                  >
-                    {sectionPrinters.map((p) => (
-                      <MarketGrid.Item key={p.id}>
-                        <MarketCard
-                          mode="transient"
-                          title={p.name}
-                          secondaryText={p.modelId}
-                          leadingAccessory={
-                            p.imageUrl ? (
-                              <img
-                                className="printers-settings-main__printer-thumb"
-                                src={p.imageUrl}
-                                alt=""
-                                width={56}
-                                height={56}
-                              />
-                            ) : undefined
-                          }
-                          trailingAccessory={
-                            <MarketText
-                              component="span"
-                              typeStyle="semibold-10"
-                              textColor={
-                                p.status === 'online' ? 'success-text' : 'text-30'
-                              }
-                              withMargin={false}
-                            >
-                              {p.status === 'online' ? 'Online' : 'Offline'}
-                            </MarketText>
-                          }
-                          onClick={() => undefined}
-                        />
-                      </MarketGrid.Item>
-                    ))}
-                  </MarketGrid>
-                </section>
-              ))}
+                    <MarketText
+                      id={`printer-group-heading-${sectionIndex}`}
+                      className="printers-settings-main__section-heading"
+                      component="h2"
+                      typeStyle="heading-20"
+                      textColor="text-10"
+                      withMargin={false}
+                    >
+                      {section.groupName}
+                    </MarketText>
+                    <PrinterGridList printers={section.printers} onEditPrinter={openEditPrinter} />
+                  </section>
+                ),
+              )}
             </>
           )}
         </MarketPagingTabs.TabPanel>
 
-        <MarketPagingTabs.TabPanel aria-labelledby={TAB_RULES}>
-          {rules.length === 0 ? (
+        <MarketPagingTabs.TabPanel
+          aria-labelledby={TAB_PRINT_RULES}
+          className="printers-settings-main__print-rules-tab-panel"
+        >
+          {printRules.length === 0 ? (
             <div className="printers-settings-main__empty">
               <MarketEmptyState
                 borderless
-                primaryText="No rules to show"
-                secondaryText="Set rules for what printers should and shouldn't print."
+                primaryText="No print rules to show"
+                secondaryText="Create print rules to control what prints on each printer."
                 actions={
-                  <MarketButton rank="primary" type="button" onClick={openAddRule}>
-                    Add rule
+                  <MarketButton rank="primary" type="button" onClick={openAddPrintRule}>
+                    Add print rule
                   </MarketButton>
                 }
               />
             </div>
           ) : (
-            <MarketTable>
-              <MarketTable.Head>
-                <MarketTable.Row>
-                  <MarketTable.Cell component="th">Name</MarketTable.Cell>
-                  <MarketTable.Cell component="th">Type</MarketTable.Cell>
-                </MarketTable.Row>
-              </MarketTable.Head>
-              <MarketTable.Body>
-                {rules.map((r) => (
-                  <MarketTable.Row
-                    key={r.id}
-                    className="printers-settings-main__rules-row"
-                    aria-label={`Edit rule ${r.name}`}
-                    tabIndex={0}
-                    onClick={() => openEditRule(r.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openEditRule(r.id);
+            <div className="printers-settings-main__print-rules-list">
+              <MarketGrid
+                columns={{ narrow: 1, medium: 1, wide: 1, extraWide: 1 }}
+                gap={200}
+              >
+                {printRules.map((printRule) => (
+                  <MarketGrid.Item key={printRule.id}>
+                    <MarketCard
+                      mode="transient"
+                      title={printRule.name}
+                      secondaryText={printRuleCardSummary(printRule)}
+                      onClick={() => openEditPrintRule(printRule.id)}
+                      trailingAccessory={
+                        <div
+                          className="printers-settings-main__print-rule-card-trailing"
+                          onClick={(ev) => ev.stopPropagation()}
+                          onMouseDown={(ev) => ev.stopPropagation()}
+                        >
+                          <MarketButton
+                            type="button"
+                            rank="tertiary"
+                            destructive
+                            aria-label={`Delete print rule ${printRule.name}`}
+                            icon={<MarketTrashcanIcon aria-hidden />}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeletePrintRule(printRule.id);
+                            }}
+                          />
+                        </div>
                       }
-                    }}
-                  >
-                    <MarketTable.Cell>{r.name}</MarketTable.Cell>
-                    <MarketTable.Cell>{ruleTypeLabel(r.ruleType)}</MarketTable.Cell>
-                  </MarketTable.Row>
+                    />
+                  </MarketGrid.Item>
                 ))}
-              </MarketTable.Body>
-            </MarketTable>
+              </MarketGrid>
+            </div>
           )}
         </MarketPagingTabs.TabPanel>
       </MarketPagingTabs>
@@ -307,24 +624,33 @@ export function PrintersSettingsMain() {
         open={addPrinterPhase === 'configure'}
         onClose={closeAddPrinter}
         catalogEntry={pendingCatalogEntry ?? DEFAULT_SQUARE_ACCESSORY_PRINTER}
-        onSave={handleSaveNewPrinter}
+        initialPrinter={editingPrinter}
+        onSave={handleSavePrinter}
         existingGroupNames={existingGroupNames}
-        kitchenTicketRules={kitchenTicketRules}
+        kitchenTicketPrintRules={kitchenTicketPrintRulesForPrinterModal}
+        availableKitchenPrintRulesToAdd={kitchenPrintRulesAvailableToAdd}
         onCreateKitchenRule={openKitchenRuleCreateFromPrinter}
-        onEditKitchenRule={openEditRule}
-        onDeleteKitchenRule={handleDeleteRule}
-        customerReceiptRules={customerReceiptRules}
+        onEditKitchenRule={openEditPrintRule}
+        onRemoveKitchenRuleFromPrinter={handleRemoveKitchenRuleFromPrinter}
+        onAddExistingKitchenRuleToPrinter={handleAddExistingKitchenRuleToPrinter}
+        customerReceiptPrintRules={customerReceiptPrintRulesForPrinterModal}
+        availableReceiptPrintRulesToAdd={receiptPrintRulesAvailableToAdd}
         onCreateCustomerReceiptRule={openCustomerReceiptRuleCreateFromPrinter}
-        onEditCustomerReceiptRule={openEditRule}
-        onDeleteCustomerReceiptRule={handleDeleteRule}
+        onEditCustomerReceiptRule={openEditPrintRule}
+        onRemoveCustomerReceiptRuleFromPrinter={handleRemoveCustomerReceiptRuleFromPrinter}
+        onAddExistingReceiptRuleToPrinter={handleAddExistingReceiptRuleToPrinter}
+        stackedPrintRuleModalOpen={addPrintRuleModalOpen}
       />
 
       <AddRuleModal
-        open={addRuleOpen}
-        onClose={closeAddRule}
-        onSave={handleSaveRule}
-        initialRule={editingRule}
-        defaultRuleType={addRuleDefaultType}
+        open={addPrintRuleModalOpen}
+        onClose={closeAddPrintRule}
+        onSave={handleSavePrintRule}
+        initialRule={editingPrintRule}
+        defaultRuleType={addPrintRuleDefaultType}
+        printers={printersForAddPrintRuleModal}
+        defaultAppliedPrinterIds={printRuleModalDefaultAppliedPrinterIds}
+        onConnectPrinter={openAddPrinter}
       />
     </>
   );

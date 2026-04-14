@@ -4,13 +4,16 @@
   height: 100vh;
   min-height: 100vh;
   background: var(--market-core-background-primary-color, #fff);
-  /* Force primary body copy and “muted” semantic text to black within this shell */
+  /*
+   * Keep strong body copy (text-10) on black; secondary/tertiary tokens must stay distinct so
+   * MarketText textColor="text-20" / "text-30" actually read as muted (not the same as text-10).
+   */
   --market-core-text-10-color: #000000;
-  --market-core-text-20-color: #000000;
-  --market-core-text-30-color: #000000;
+  --market-core-text-20-color: rgba(0, 0, 0, 0.65);
+  --market-core-text-30-color: rgba(0, 0, 0, 0.55);
   --market-core-text-10-light-mode-color: #000000;
-  --market-core-text-20-light-mode-color: #000000;
-  --market-core-text-30-light-mode-color: #000000;
+  --market-core-text-20-light-mode-color: rgba(0, 0, 0, 0.65);
+  --market-core-text-30-light-mode-color: rgba(0, 0, 0, 0.55);
 }
 
 .pos-chrome__body {

@@ -1,0 +1,38 @@
+/* Indent POS terminal rows under the POS group option (class forwarded to MarketRow). */
+.order-source-multi__pos-header {
+  font-weight: 600;
+}
+
+.order-source-multi__pos-child {
+  padding-inline-start: 32px;
+}
+
+/*
+ * MarketSelect trigger: keep selection text on one line with ellipsis (avoid clipping wrapped lines).
+ * Class names from @squareup/market-react are hashed but still contain these substrings.
+ */
+.order-source-multi {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.order-source-multi button[role='combobox'] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.order-source-multi button[role='combobox'] [class*='labelInputContainer'] {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.order-source-multi button[role='combobox'] [class*='selectionLabel'] {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}

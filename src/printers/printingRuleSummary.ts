@@ -1,5 +1,6 @@
 import { categoryContentSecondaryLine, menuCategoryById } from './entireCategoryRuleUtils';
-import { FULFILLMENT_RULE_TITLES, SOURCE_RULE_TITLES } from './printingRuleFieldOptions';
+import { orderSourcesSummaryText } from './orderSourceSelection';
+import { FULFILLMENT_RULE_TITLES } from './printingRuleFieldOptions';
 import type { PrintingRule } from './types';
 
 function isFullTitleSet(selected: string[] | undefined, allTitles: readonly string[]): boolean {
@@ -22,11 +23,7 @@ function fulfillmentSummary(rule: PrintingRule): string {
 }
 
 function sourceSummary(rule: PrintingRule): string {
-  const titles = rule.orderSources;
-  if (isFullTitleSet(titles, SOURCE_RULE_TITLES)) {
-    return 'All sources';
-  }
-  return titles?.join(', ') ?? 'All sources';
+  return orderSourcesSummaryText(rule);
 }
 
 function contentSummary(rule: PrintingRule): string {
@@ -59,11 +56,16 @@ function contentSummary(rule: PrintingRule): string {
     .join(' · ');
 }
 
+function ruleTypeLabel(ruleType: PrintingRule['ruleType']): string {
+  return ruleType === 'customer_receipt' ? 'Receipt print rule' : 'Ticket print rule';
+}
+
 /** One-line summary of fulfillments, sources, and category content for ticket/receipt rule cards. */
 export function printRuleCardSummary(rule: PrintingRule): string {
-  return [
+  const body = [
     `Fulfillments: ${fulfillmentSummary(rule)}`,
     `Sources: ${sourceSummary(rule)}`,
     `Content: ${contentSummary(rule)}`,
   ].join(' · ');
+  return `${ruleTypeLabel(rule.ruleType)} · ${body}`;
 }

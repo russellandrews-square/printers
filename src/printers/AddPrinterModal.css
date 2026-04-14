@@ -65,20 +65,122 @@
 }
 
 .add-printer-modal__kv-label {
-  color: var(--market-core-text-30-color, rgba(0, 0, 0, 0.55));
+  color: var(--market-core-text-20-color, rgba(0, 0, 0, 0.75));
 }
 
-.add-printer-modal__rules-empty {
-  padding: 8px 0 4px;
+.add-printer-modal__rules-heading {
+  display: block;
+  margin-bottom: 16px;
 }
 
-.add-printer-modal__rules-grid {
-  padding-top: 4px;
+.add-printer-modal__rules-panel {
+  border: 1px solid var(--market-core-stroke-40-color, rgba(0, 0, 0, 0.12));
+  border-radius: var(--market-core-radius-200, 6px);
+  background: var(--market-core-fill-00-color, #fff);
+  box-sizing: border-box;
 }
 
-.add-printer-modal__rule-card-trailing {
+.add-printer-modal__rules-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+  padding: 16px 16px;
+  box-sizing: border-box;
+}
+
+.add-printer-modal__rules-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-printer-modal__rule-card {
+  padding: 16px;
+}
+
+.add-printer-modal__rules-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.add-printer-modal__rules-row-text {
+  flex: 1 1 0;
+  min-width: 0;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: var(--market-core-radius-100, 4px);
+}
+
+.add-printer-modal__rules-row-text:focus-visible {
+  outline: 2px solid var(--market-core-stroke-focus-color, rgba(0, 102, 255, 0.6));
+  outline-offset: 2px;
+}
+
+.add-printer-modal__rules-actions {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.add-printer-modal__rules-actions-split {
+  width: 100%;
+}
+
+.add-printer-modal__rules-actions-split > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.add-printer-modal__rules-action-full {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.add-printer-modal__pick-existing-header-actions {
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.add-printer-modal__pick-existing-header-actions > * {
+  flex: 0 0 auto;
+}
+
+.add-printer-modal__pick-existing-body {
+  padding-top: 8px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.add-printer-modal__pick-existing-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-printer-modal__pick-existing-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.add-printer-modal__print-rule-card-trailing {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+/*
+ * MarketPopover (MarketCombobox, MarketSelect) uses z-index 1000 inline; AddPrinterModal is 1050,
+ * so suggestions render behind the modal. 1100 clears the printer modal; AddRuleModal.css (1175)
+ * loads after this file when both modals are open so rule UI stays on top.
+ */
+body.add-printer-modal-open [data-placement] {
+  z-index: 1100 !important;
 }
 
