@@ -59,6 +59,11 @@
   gap: 16px;
 }
 
+.add-rule-modal__content-card-trash-stop {
+  display: inline-flex;
+  align-items: center;
+}
+
 .add-rule-modal__add-content-dropdown {
   display: block;
   width: 100%;

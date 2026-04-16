@@ -4,7 +4,7 @@ import { MarketDropdown, MarketList } from '@squareup/market-react/trial';
 import { ADD_RULE_CONTENT_OPTIONS, type AddRuleContentOptionId } from './addRuleContentOptions';
 
 /**
- * Above AddRuleModal (1150), below EntireCategoriesPicker (1200) so the categories sheet stacks on top.
+ * Above AddRuleModal (1150), below content pickers (EntireCategoriesPicker, SpecificItemsPicker, ModifierGroupsPicker at 1200).
  */
 const ADD_CONTENT_DROPDOWN_Z_INDEX = 1175;
 

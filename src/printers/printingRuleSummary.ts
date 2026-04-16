@@ -1,4 +1,9 @@
 import { categoryContentSecondaryLine, menuCategoryById } from './entireCategoryRuleUtils';
+import {
+  modifierGroupById,
+  selectedModifierOptionNamesSorted,
+} from './modifierGroupRuleUtils';
+import { specificItemNamesSorted } from './menuCategoryData';
 import { orderSourcesSummaryText } from './orderSourceSelection';
 import { FULFILLMENT_RULE_TITLES } from './printingRuleFieldOptions';
 import type { PrintingRule } from './types';
@@ -28,32 +33,59 @@ function sourceSummary(rule: PrintingRule): string {
 
 function contentSummary(rule: PrintingRule): string {
   const rows = rule.entireCategoryContent ?? [];
-  if (rows.length === 0) {
+  const specificIds = rule.specificItemIds ?? [];
+  const modifierRows = rule.modifierGroupContent ?? [];
+
+  const categoryPart =
+    rows.length > 0
+      ? rows
+          .map((row) => {
+            const cat = menuCategoryById(row.categoryId);
+            const title = cat ? `${cat.name} (Category)` : `${row.categoryId} (Category)`;
+            const excludeLine = categoryContentSecondaryLine(row, cat);
+            const auto = row.autoIncludeNewItems ? ' · auto-include new items' : '';
+
+            if (excludeLine) {
+              return `${title} — ${excludeLine}${auto}`;
+            }
+
+            const nItems = cat?.items.length ?? 0;
+            const nIncluded = row.includedItemIds.length;
+            if (nItems > 0 && nIncluded === nItems) {
+              return `${title}: all ${nItems} items${auto}`;
+            }
+            if (nItems > 0) {
+              return `${title}: ${nIncluded} of ${nItems} items${auto}`;
+            }
+            return `${title}: ${nIncluded} items${auto}`;
+          })
+          .join(' · ')
+      : null;
+
+  const specificPart =
+    specificIds.length > 0
+      ? `Specific items: ${specificItemNamesSorted(specificIds).join(', ')}`
+      : null;
+
+  const modifierPart =
+    modifierRows.length > 0
+      ? modifierRows
+          .map((row) => {
+            const grp = modifierGroupById(row.modifierGroupId);
+            const title = grp
+              ? `${grp.name} (Modifier Group)`
+              : `${row.modifierGroupId} (Modifier Group)`;
+            const names = selectedModifierOptionNamesSorted(row.includedOptionIds).join(', ');
+            return `${title}: ${names}`;
+          })
+          .join(' · ')
+      : null;
+
+  const parts = [categoryPart, specificPart, modifierPart].filter(Boolean) as string[];
+  if (parts.length === 0) {
     return 'No category content';
   }
-
-  return rows
-    .map((row) => {
-      const cat = menuCategoryById(row.categoryId);
-      const title = cat ? `${cat.name} (Category)` : `${row.categoryId} (Category)`;
-      const excludeLine = categoryContentSecondaryLine(row, cat);
-      const auto = row.autoIncludeNewItems ? ' · auto-include new items' : '';
-
-      if (excludeLine) {
-        return `${title} — ${excludeLine}${auto}`;
-      }
-
-      const nItems = cat?.items.length ?? 0;
-      const nIncluded = row.includedItemIds.length;
-      if (nItems > 0 && nIncluded === nItems) {
-        return `${title}: all ${nItems} items${auto}`;
-      }
-      if (nItems > 0) {
-        return `${title}: ${nIncluded} of ${nItems} items${auto}`;
-      }
-      return `${title}: ${nIncluded} items${auto}`;
-    })
-    .join(' · ');
+  return parts.join(' · ');
 }
 
 function ruleTypeLabel(ruleType: PrintingRule['ruleType']): string {

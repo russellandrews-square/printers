@@ -1,4 +1,4 @@
-/** Options for “Add content” (dropdown); only `entire-categories` is wired in the UI today. */
+/** Options for “Add content” (dropdown); all options are wired in the UI. */
 export const ADD_RULE_CONTENT_OPTIONS = [
   {
     id: 'entire-categories',

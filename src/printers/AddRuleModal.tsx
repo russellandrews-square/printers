@@ -17,10 +17,24 @@ import {
   menuCategoryById,
 } from './entireCategoryRuleUtils';
 import { EntireCategoriesPicker } from './EntireCategoriesPicker';
+import {
+  mergeModifierGroupSave,
+  modifierGroupById,
+  selectedModifierOptionNamesSorted,
+} from './modifierGroupRuleUtils';
+import { ModifierGroupsPicker } from './ModifierGroupsPicker';
+import { specificItemNamesSorted } from './menuCategoryData';
 import { orderSourceFieldsFromState, orderSourceStateFromRule } from './orderSourceSelection';
 import { OrderSourceMultiSelect } from './OrderSourceMultiSelect';
 import { FULFILLMENT_RULE_OPTIONS } from './printingRuleFieldOptions';
-import type { EntireCategoryRuleContent, Printer, PrintingRule, PrintingRuleType } from './types';
+import { SpecificItemsPicker } from './SpecificItemsPicker';
+import type {
+  EntireCategoryRuleContent,
+  ModifierGroupRuleContent,
+  Printer,
+  PrintingRule,
+  PrintingRuleType,
+} from './types';
 import { useViewTransitionVisibility } from './useViewTransitionVisibility';
 import './AddRuleModal.css';
 
@@ -143,7 +157,12 @@ export function AddRuleModal({
   const [appliedPrinters, setAppliedPrinters] = useState<Set<string>>(new Set());
   const [entireCategoriesOpen, setEntireCategoriesOpen] = useState(false);
   const [categoryContents, setCategoryContents] = useState<EntireCategoryRuleContent[]>([]);
+  const [specificItemsOpen, setSpecificItemsOpen] = useState(false);
+  const [specificItemIds, setSpecificItemIds] = useState<string[]>([]);
   const [pickerDrillCategoryId, setPickerDrillCategoryId] = useState<string | null>(null);
+  const [modifierGroupsOpen, setModifierGroupsOpen] = useState(false);
+  const [modifierGroupContents, setModifierGroupContents] = useState<ModifierGroupRuleContent[]>([]);
+  const [pickerDrillModifierGroupId, setPickerDrillModifierGroupId] = useState<string | null>(null);
   const [ruleKind, setRuleKind] = useState<PrintingRuleType>(() => {
     return initialRule?.ruleType ?? defaultRuleType ?? 'kitchen_ticket';
   });
@@ -187,6 +206,12 @@ export function AddRuleModal({
       setCategoryContents(
         initialRule.ruleType === 'kitchen_ticket' ? (initialRule.entireCategoryContent ?? []) : [],
       );
+      setSpecificItemIds(
+        initialRule.ruleType === 'kitchen_ticket' ? (initialRule.specificItemIds ?? []) : [],
+      );
+      setModifierGroupContents(
+        initialRule.ruleType === 'kitchen_ticket' ? (initialRule.modifierGroupContent ?? []) : [],
+      );
     } else {
       setRuleName('');
       setFulfillments(allSelectedSet(FULFILLMENT_IDS));
@@ -196,16 +221,26 @@ export function AddRuleModal({
         new Set((defaultAppliedPrinterIds ?? []).filter((id) => validPrinterIds.has(id))),
       );
       setCategoryContents([]);
+      setSpecificItemIds([]);
+      setModifierGroupContents([]);
     }
     setEntireCategoriesOpen(false);
+    setSpecificItemsOpen(false);
+    setModifierGroupsOpen(false);
     setPickerDrillCategoryId(null);
+    setPickerDrillModifierGroupId(null);
   }, [modalShown, initialRule?.id, defaultRuleType, defaultAppliedPrinterKey]);
 
   useEffect(() => {
     if (ruleKind === 'customer_receipt') {
       setCategoryContents([]);
+      setSpecificItemIds([]);
+      setModifierGroupContents([]);
       setEntireCategoriesOpen(false);
+      setSpecificItemsOpen(false);
+      setModifierGroupsOpen(false);
       setPickerDrillCategoryId(null);
+      setPickerDrillModifierGroupId(null);
     }
   }, [ruleKind]);
 
@@ -268,20 +303,77 @@ export function AddRuleModal({
   }, []);
 
   const openEntireCategoriesFromChooser = useCallback(() => {
+    setSpecificItemsOpen(false);
+    setModifierGroupsOpen(false);
+    setPickerDrillModifierGroupId(null);
     setPickerDrillCategoryId(null);
     setEntireCategoriesOpen(true);
   }, []);
 
   const openEntireCategoriesEditor = useCallback((categoryId: string) => {
+    setSpecificItemsOpen(false);
+    setModifierGroupsOpen(false);
+    setPickerDrillModifierGroupId(null);
     setPickerDrillCategoryId(categoryId);
     setEntireCategoriesOpen(true);
   }, []);
 
-  const handleAddContentPick = useCallback((id: AddRuleContentOptionId) => {
-    if (id === 'entire-categories') {
-      openEntireCategoriesFromChooser();
-    }
-  }, [openEntireCategoriesFromChooser]);
+  const openSpecificItemsPicker = useCallback(() => {
+    setEntireCategoriesOpen(false);
+    setModifierGroupsOpen(false);
+    setPickerDrillCategoryId(null);
+    setPickerDrillModifierGroupId(null);
+    setSpecificItemsOpen(true);
+  }, []);
+
+  const openModifierGroupsFromChooser = useCallback(() => {
+    setEntireCategoriesOpen(false);
+    setSpecificItemsOpen(false);
+    setPickerDrillCategoryId(null);
+    setPickerDrillModifierGroupId(null);
+    setModifierGroupsOpen(true);
+  }, []);
+
+  const openModifierGroupsEditor = useCallback((groupId: string) => {
+    setEntireCategoriesOpen(false);
+    setSpecificItemsOpen(false);
+    setPickerDrillCategoryId(null);
+    setPickerDrillModifierGroupId(groupId);
+    setModifierGroupsOpen(true);
+  }, []);
+
+  const handleSpecificItemsSave = useCallback((ids: string[]) => {
+    setSpecificItemIds(ids);
+    setSpecificItemsOpen(false);
+  }, []);
+
+  const handleSpecificItemsDismiss = useCallback(() => {
+    setSpecificItemsOpen(false);
+  }, []);
+
+  const handleModifierGroupsSave = useCallback((saved: ModifierGroupRuleContent[]) => {
+    setModifierGroupContents((prev) => mergeModifierGroupSave(prev, saved));
+    setModifierGroupsOpen(false);
+    setPickerDrillModifierGroupId(null);
+  }, []);
+
+  const handleModifierGroupsDismiss = useCallback(() => {
+    setModifierGroupsOpen(false);
+    setPickerDrillModifierGroupId(null);
+  }, []);
+
+  const handleAddContentPick = useCallback(
+    (id: AddRuleContentOptionId) => {
+      if (id === 'entire-categories') {
+        openEntireCategoriesFromChooser();
+      } else if (id === 'specific-items') {
+        openSpecificItemsPicker();
+      } else if (id === 'modifier-groups') {
+        openModifierGroupsFromChooser();
+      }
+    },
+    [openEntireCategoriesFromChooser, openModifierGroupsFromChooser, openSpecificItemsPicker],
+  );
 
   if (!modalShown) {
     return null;
@@ -311,6 +403,14 @@ export function AddRuleModal({
           ruleKind === 'kitchen_ticket' && categoryContents.length > 0
             ? categoryContents
             : undefined,
+        specificItemIds:
+          ruleKind === 'kitchen_ticket' && specificItemIds.length > 0
+            ? specificItemIds
+            : undefined,
+        modifierGroupContent:
+          ruleKind === 'kitchen_ticket' && modifierGroupContents.length > 0
+            ? modifierGroupContents
+            : undefined,
       },
       initialRule?.id,
     );
@@ -329,7 +429,7 @@ export function AddRuleModal({
         contentWidth="regular"
         zIndex={1150}
         onClose={onClose}
-        noVeil={entireCategoriesOpen}
+        noVeil={entireCategoriesOpen || specificItemsOpen || modifierGroupsOpen}
       >
         <MarketModal.Header
           contentWidth="regular"
@@ -447,7 +547,9 @@ export function AddRuleModal({
                   Print orders with this content
                 </MarketText>
 
-                {categoryContents.length === 0 ? (
+                {categoryContents.length === 0 &&
+                specificItemIds.length === 0 &&
+                modifierGroupContents.length === 0 ? (
                   <MarketEmptyState
                     primaryText="No content added yet"
                     secondaryText="Add specific categories, items, and modifiers."
@@ -470,9 +572,11 @@ export function AddRuleModal({
                       return (
                         <MarketCard
                           key={row.categoryId}
+                          mode="transient"
                           title={title}
                           secondaryText={secondary}
                           verticalAlignment={secondary ? 'top' : 'center'}
+                          onClick={() => openEntireCategoriesEditor(row.categoryId)}
                           trailingAccessory={
                             <div className="add-rule-modal__content-card-actions">
                               <MarketLink
@@ -485,18 +589,118 @@ export function AddRuleModal({
                               >
                                 Edit
                               </MarketLink>
+                              <span
+                                className="add-rule-modal__content-card-trash-stop"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <MarketButton
+                                  type="button"
+                                  rank="tertiary"
+                                  destructive
+                                  aria-label={`Remove ${cat?.name ?? 'category'}`}
+                                  icon={<MarketTrashcanIcon aria-hidden />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCategoryContents((prev) =>
+                                      prev.filter((c) => c.categoryId !== row.categoryId),
+                                    );
+                                  }}
+                                />
+                              </span>
+                            </div>
+                          }
+                        />
+                      );
+                    })}
+                    {specificItemIds.length > 0 ? (
+                      <MarketCard
+                        key="__specific_items__"
+                        mode="transient"
+                        title="Specific items"
+                        secondaryText={specificItemNamesSorted(specificItemIds).join(', ')}
+                        verticalAlignment="top"
+                        onClick={() => openSpecificItemsPicker()}
+                        trailingAccessory={
+                          <div className="add-rule-modal__content-card-actions">
+                            <MarketLink
+                              type="button"
+                              standalone
+                              onClick={(e) => {
+                                e.preventDefault();
+                                openSpecificItemsPicker();
+                              }}
+                            >
+                              Edit
+                            </MarketLink>
+                            <span
+                              className="add-rule-modal__content-card-trash-stop"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
                               <MarketButton
                                 type="button"
                                 rank="tertiary"
                                 destructive
-                                aria-label={`Remove ${cat?.name ?? 'category'}`}
+                                aria-label="Remove specific items"
                                 icon={<MarketTrashcanIcon aria-hidden />}
-                                onClick={() =>
-                                  setCategoryContents((prev) =>
-                                    prev.filter((c) => c.categoryId !== row.categoryId),
-                                  )
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSpecificItemIds([]);
+                                }}
                               />
+                            </span>
+                          </div>
+                        }
+                      />
+                    ) : null}
+                    {modifierGroupContents.map((row) => {
+                      const grp = modifierGroupById(row.modifierGroupId);
+                      const title = grp
+                        ? `${grp.name} (Modifier Group)`
+                        : `${row.modifierGroupId} (Modifier Group)`;
+                      const secondary = selectedModifierOptionNamesSorted(row.includedOptionIds).join(
+                        ', ',
+                      );
+                      return (
+                        <MarketCard
+                          key={row.modifierGroupId}
+                          mode="transient"
+                          title={title}
+                          secondaryText={secondary}
+                          verticalAlignment="top"
+                          onClick={() => openModifierGroupsEditor(row.modifierGroupId)}
+                          trailingAccessory={
+                            <div className="add-rule-modal__content-card-actions">
+                              <MarketLink
+                                type="button"
+                                standalone
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  openModifierGroupsEditor(row.modifierGroupId);
+                                }}
+                              >
+                                Edit
+                              </MarketLink>
+                              <span
+                                className="add-rule-modal__content-card-trash-stop"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <MarketButton
+                                  type="button"
+                                  rank="tertiary"
+                                  destructive
+                                  aria-label={`Remove ${grp?.name ?? 'modifier group'}`}
+                                  icon={<MarketTrashcanIcon aria-hidden />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModifierGroupContents((prev) =>
+                                      prev.filter((g) => g.modifierGroupId !== row.modifierGroupId),
+                                    );
+                                  }}
+                                />
+                              </span>
                             </div>
                           }
                         />
@@ -521,6 +725,21 @@ export function AddRuleModal({
         initialDrillCategoryId={pickerDrillCategoryId}
         onDismiss={handleEntireCategoriesDismiss}
         onSave={handleEntireCategoriesSave}
+        baseZIndex={1200}
+      />
+      <SpecificItemsPicker
+        open={specificItemsOpen}
+        initialItemIds={specificItemIds}
+        onDismiss={handleSpecificItemsDismiss}
+        onSave={handleSpecificItemsSave}
+        baseZIndex={1200}
+      />
+      <ModifierGroupsPicker
+        open={modifierGroupsOpen}
+        initialContents={modifierGroupContents}
+        initialDrillModifierGroupId={pickerDrillModifierGroupId}
+        onDismiss={handleModifierGroupsDismiss}
+        onSave={handleModifierGroupsSave}
         baseZIndex={1200}
       />
     </>

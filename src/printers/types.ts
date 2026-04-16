@@ -25,6 +25,12 @@ export type EntireCategoryRuleContent = {
   autoIncludeNewItems: boolean;
 };
 
+/** One modifier group’s option inclusion when using “Modifier groups” content */
+export type ModifierGroupRuleContent = {
+  modifierGroupId: string;
+  includedOptionIds: string[];
+};
+
 export type PrintingRule = {
   id: string;
   name: string;
@@ -42,4 +48,8 @@ export type PrintingRule = {
   orderSourcePosTerminalIds?: string[];
   /** Categories (and item subsets) included via “Entire categories” */
   entireCategoryContent?: EntireCategoryRuleContent[];
+  /** Item ids included via “Specific items” (kitchen ticket only) */
+  specificItemIds?: string[];
+  /** Modifier groups (and selected options) included via “Modifier groups” */
+  modifierGroupContent?: ModifierGroupRuleContent[];
 };

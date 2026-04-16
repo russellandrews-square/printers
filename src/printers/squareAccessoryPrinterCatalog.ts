@@ -19,13 +19,13 @@ export const SQUARE_ACCESSORY_PRINTER_CATALOG: SquareAccessoryPrinterCatalogEntr
     id: 'star-tsp143iv-ue',
     catalogName: STAR_TSP143IV_MODEL,
     modelId: STAR_TSP143IV_MODEL,
-    imageUrl: '/printers/printer-hero.png',
+    imageUrl: `${import.meta.env.BASE_URL}printers/printer-hero.png`,
   },
   {
     id: 'star-sp742me-ethernet',
     catalogName: STAR_SP742ME_MODEL,
     modelId: STAR_SP742ME_MODEL,
-    imageUrl: '/printers/printer-hero2.png',
+    imageUrl: `${import.meta.env.BASE_URL}printers/printer-hero2.png`,
   },
 ];
 

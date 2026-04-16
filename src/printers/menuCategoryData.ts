@@ -68,3 +68,30 @@ export function allSelections(categories: MenuCategory[]): Record<string, Set<st
   }
   return out;
 }
+
+/** All catalog items in one list, sorted alphabetically by name */
+export function allMenuItemsFlat(): MenuItem[] {
+  const items: MenuItem[] = [];
+  for (const c of MENU_CATEGORIES) {
+    items.push(...c.items);
+  }
+  return items.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+const MENU_ITEM_BY_ID: Map<string, MenuItem> = new Map();
+for (const c of MENU_CATEGORIES) {
+  for (const i of c.items) {
+    MENU_ITEM_BY_ID.set(i.id, i);
+  }
+}
+
+export function menuItemById(id: string): MenuItem | undefined {
+  return MENU_ITEM_BY_ID.get(id);
+}
+
+/** Display names for ids, sorted alphabetically (unknown ids sort by raw id). */
+export function specificItemNamesSorted(ids: readonly string[]): string[] {
+  return [...ids]
+    .map((id) => menuItemById(id)?.name ?? id)
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
